@@ -11,6 +11,7 @@ import java.util.List;
 import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,7 +19,8 @@ import org.springframework.web.multipart.MultipartFile;
 public class VideoStorageService {
 
     private static final Logger logger = LoggerFactory.getLogger(VideoStorageService.class);
-    private final String URL_DOMAIN = "http://localhost:8080";
+    @Value("${app.urlDomain}")
+    private String URL_DOMAIN;
     private final Path rootLocation = Paths.get("static/videos");
 
     public String getVideoUrl(String fileName) {

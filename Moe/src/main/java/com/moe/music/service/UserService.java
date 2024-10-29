@@ -8,7 +8,8 @@ import com.moe.music.dtoauth.LoginRequest;
 import com.moe.music.dtoauth.RegisterRequest;
 import com.moe.music.jpa.UserJPA;
 import com.moe.music.model.User;
-import com.moe.music.security.JwtTokenProvider;
+import com.moe.music.exception.AppException;
+import org.springframework.http.HttpStatus;
 
 import jakarta.transaction.Transactional;
 
@@ -22,7 +23,7 @@ public class UserService {
 	private PasswordEncoder passwordEncoder;
 
 	@Autowired
-	private JwtTokenProvider jwtTokenProvider;
+	private TokenService tokenService;
 
 	@Transactional
 	public User register(RegisterRequest request) {
@@ -39,9 +40,9 @@ public class UserService {
 	public String login(LoginRequest request) {
 		User user = userJpa.findByUsername(request.getUsername());
 		if (user != null && passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-			return jwtTokenProvider.generateToken(user);
+			return tokenService.generateJwtToken(user); // Sử dụng TokenService để tạo token
 		}
-		throw new RuntimeException("Invalid username or password");
+		throw new AppException("Invalid username or password", HttpStatus.UNAUTHORIZED.value());
 	}
 
 	@Transactional
@@ -50,10 +51,11 @@ public class UserService {
 		userJpa.save(user);
 	}
 
-	public boolean validateOldPassword(User userId, String oldPassword) {
-		User user = userJpa.findById(userId.getUserId()).orElseThrow(() -> new RuntimeException("User not found"));
+	public boolean validateOldPassword(User user, String oldPassword) {
+		User existingUser = userJpa.findById(user.getUserId())
+				.orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND.value()));
 
 		// Kiểm tra mật khẩu cũ
-		return passwordEncoder.matches(oldPassword, user.getPasswordHash());
+		return passwordEncoder.matches(oldPassword, existingUser.getPasswordHash());
 	}
 }
