@@ -2,19 +2,17 @@ package com.moe.music.model;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -26,45 +24,35 @@ import lombok.NoArgsConstructor;
 @Table(name = "Notifications")
 public class Notification {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "notification_id")
-    private int notificationId;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Integer notificationId;
 
-    @NotNull
-    @Column(name = "user_id", nullable = false)
-    private int userId;
+	@ManyToOne
+	@JoinColumn(name = "user_id", nullable = false)
+	@JsonBackReference
+	private User user;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false)
-    private NotificationType type;
+	@Column(name = "notification_type", nullable = false, length = 20)
+	private String notificationType;
 
-    @NotNull
-    @Column(name = "reference_id", nullable = false)
-    private int referenceId;
+	@Column(name = "reference_id", nullable = false)
+	private Integer referenceId;
 
-    @Lob
-    private String message;
+	@Column(name = "title", length = 100)
+	private String title;
 
-    @Column(name = "is_read", nullable = false)
-    private boolean isRead = false;
+	@Column(name = "message")
+	private String message;
 
-    @Column(name = "created_at", nullable = false, updatable = false, insertable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-    private LocalDateTime createdAt;
+	@Column(name = "is_read", columnDefinition = "boolean default false")
+	private Boolean isRead = false;
 
-    // Callback to automatically set createdAt
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-    }
+	@Column(name = "created_at", updatable = false)
+	private LocalDateTime createdAt;
 
-    // Enum for notification types
-    public enum NotificationType {
-        LIKE, COMMENT, FOLLOW, MENTION
-    }
-
-    // Relationships
-    @ManyToOne
-    @JoinColumn(name = "user_id", insertable = false, updatable = false)
-    private User user;
+	@PrePersist
+	protected void onCreate() {
+		this.createdAt = LocalDateTime.now();
+	}
 }

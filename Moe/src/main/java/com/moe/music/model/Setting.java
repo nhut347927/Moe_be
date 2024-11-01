@@ -7,12 +7,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -24,41 +21,33 @@ import lombok.NoArgsConstructor;
 @Table(name = "Settings")
 public class Setting {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "setting_id")
-    private int settingId;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Integer settingId; // Khóa chính
 
-    @NotNull
-    @Column(name = "user_id", nullable = false)
-    private int userId;
+	@Column(name = "setting_key", nullable = false, unique = true, length = 100)
+	private String settingKey; // Khóa cấu hình (VD: "app_name", "theme")
 
-    @Column(name = "receive_notifications", nullable = false)
-    private boolean receiveNotifications = true;
+	@Column(length = 255)
+	private String value; // Giá trị cấu hình
 
-    @Column(name = "private_account", nullable = false)
-    private boolean privateAccount = false;
+	@Column(name = "description")
+	private String description; // Mô tả về cấu hình
 
-    @Column(name = "created_at", nullable = false, updatable = false, insertable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-    private LocalDateTime createdAt;
+	@Column(name = "created_at", updatable = false)
+	private LocalDateTime createdAt; // Thời gian tạo
 
-    @Column(name = "updated_at", nullable = false, insertable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-    private LocalDateTime updatedAt;
+	@Column(name = "updated_at")
+	private LocalDateTime updatedAt; // Thời gian cập nhật
 
-    // Callback to automatically set timestamps
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
+	@PrePersist
+	protected void onCreate() {
+		this.createdAt = LocalDateTime.now();
+		this.updatedAt = LocalDateTime.now();
+	}
 
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    // Relationships
-    @ManyToOne
-    @JoinColumn(name = "user_id", insertable = false, updatable = false)
-    private User user;
+	@PreUpdate
+	protected void onUpdate() {
+		this.updatedAt = LocalDateTime.now();
+	}
 }

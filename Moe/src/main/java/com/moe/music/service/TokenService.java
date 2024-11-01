@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -20,11 +21,12 @@ public class TokenService {
 	@Value("${app.jwtSecret}")
 	private String jwtSecret;
 
-	@Value("${app.jwtExpirationMs}")
+	@Value("${app.expiration}")
 	private int jwtExpirationMs;
 
 	private final UserJPA userJPA;
 
+	@Autowired
 	public TokenService(UserJPA userJPA) {
 		this.userJPA = userJPA;
 	}
@@ -36,7 +38,7 @@ public class TokenService {
 	 * @return Chuỗi JWT Token
 	 */
 	public String generateJwtToken(User user) {
-		return Jwts.builder().setSubject(user.getUsername()).claim("userId", user.getUserId()).setIssuedAt(new Date())
+		return Jwts.builder().setSubject(user.getEmail()).claim("userId", user.getUserId()).setIssuedAt(new Date())
 				.setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
 				.signWith(SignatureAlgorithm.HS256, jwtSecret).compact();
 	}
@@ -62,7 +64,7 @@ public class TokenService {
 	 * @param token JWT token
 	 * @return Tên người dùng từ token hoặc null nếu token không hợp lệ
 	 */
-	public String getUsernameFromJwtToken(String token) {
+	public String getEmailFromJwtToken(String token) {
 		return Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(token).getBody().getSubject();
 	}
 

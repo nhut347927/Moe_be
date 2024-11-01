@@ -18,13 +18,13 @@ public class CustomUserDetailsService implements UserDetailsService {
 	private UserJPA userJPA;
 
 	@Override
-	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-		User user = userJPA.findByUsername(username);
+	public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+		User user = userJPA.findByEmail(email);
 		if (user == null) {
-			throw new UsernameNotFoundException("User not found with username: " + username);
+			throw new UsernameNotFoundException("User not found with username: " + email);
 		}
-		return new org.springframework.security.core.userdetails.User(user.getUsername(), user.getPasswordHash(),
-				user.isActive(), true, // accountNonExpired
+		return new org.springframework.security.core.userdetails.User(user.getEmail(), user.getPasswordHash(),
+				user.getIsActive(), true, // accountNonExpired
 				true, // credentialsNonExpired
 				true, // accountNonLocked
 				// roles

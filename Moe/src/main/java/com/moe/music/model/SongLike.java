@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -14,6 +13,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotNull;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -23,22 +23,24 @@ import lombok.NoArgsConstructor;
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "User_Playlists")
-public class UserPlaylist {
+@Table(name = "SongLikes")
+public class SongLike {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Integer userPlaylistId;
+	private Integer likeId;
 
-	@ManyToOne(cascade = CascadeType.ALL)
+	@ManyToOne
+	@JoinColumn(name = "song_id", nullable = false)
+	@NotNull(message = "Song ID cannot be null")
+	@JsonBackReference
+	private Song song;
+
+	@ManyToOne
 	@JoinColumn(name = "user_id", nullable = false)
+	@NotNull(message = "User ID cannot be null")
 	@JsonBackReference
 	private User user;
-
-	@ManyToOne(cascade = CascadeType.ALL)
-	@JoinColumn(name = "playlist_id", nullable = false)
-	@JsonBackReference
-	private Playlist playlist;
 
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt;

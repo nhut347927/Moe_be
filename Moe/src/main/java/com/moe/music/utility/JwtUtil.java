@@ -46,12 +46,12 @@ public class JwtUtil {
 		}
 
 		// Lấy tên người dùng từ token
-		String username = tokenService.getUsernameFromJwtToken(token);
+		String email = tokenService.getEmailFromJwtToken(token);
 
 		// Tìm kiếm người dùng trong hệ thống
-		User user = userJPA.findByUsername(username);
+		User user = userJPA.findByEmail(email);
 		if (user == null) {
-			throw new AppException("Không tìm thấy người dùng với username: " + username, HttpStatus.NOT_FOUND.value());
+			throw new AppException("Không tìm thấy người dùng với email: " + email, HttpStatus.NOT_FOUND.value());
 		}
 
 		return user;

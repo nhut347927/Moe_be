@@ -28,7 +28,6 @@ public class UserService {
 	@Transactional
 	public User register(RegisterRequest request) {
 		User user = new User();
-		user.setUsername(request.getUsername());
 		user.setEmail(request.getEmail());
 		user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
 		user.setDisplayName(request.getDisplayName());
@@ -38,7 +37,7 @@ public class UserService {
 	}
 
 	public String login(LoginRequest request) {
-		User user = userJpa.findByUsername(request.getUsername());
+		User user = userJpa.findByEmail(request.getEmail());
 		if (user != null && passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
 			return tokenService.generateJwtToken(user); // Sử dụng TokenService để tạo token
 		}

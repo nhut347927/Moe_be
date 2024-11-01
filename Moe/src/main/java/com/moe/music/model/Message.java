@@ -1,5 +1,8 @@
 package com.moe.music.model;
+
 import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.annotation.JsonBackReference;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -7,12 +10,9 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -24,42 +24,31 @@ import lombok.NoArgsConstructor;
 @Table(name = "Messages")
 public class Message {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "message_id")
-    private int messageId;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Integer messageId;
 
-    @NotNull
-    @Column(name = "sender_id", nullable = false)
-    private int senderId;
+	@ManyToOne
+	@JoinColumn(name = "sender_id", nullable = false)
+	@JsonBackReference
+	private User sender;
 
-    @NotNull
-    @Column(name = "receiver_id", nullable = false)
-    private int receiverId;
+	@ManyToOne
+	@JoinColumn(name = "receiver_id", nullable = false)
+	@JsonBackReference
+	private User receiver;
 
-    @NotNull
-    @Lob
-    @Size(min = 1) // Ensure that content is not empty
-    private String content;
+	@Column(nullable = false)
+	private String content;
 
-    @Column(name = "is_read", nullable = false)
-    private boolean isRead = false;
+	@Column(name = "is_read", columnDefinition = "boolean default false")
+	private Boolean isRead = false;
 
-    @Column(name = "created_at", nullable = false, updatable = false, insertable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-    private LocalDateTime createdAt;
+	@Column(name = "created_at", updatable = false)
+	private LocalDateTime createdAt;
 
-    // Callback to automatically set createdAt
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-    }
-
-    // Relationships
-    @ManyToOne
-    @JoinColumn(name = "sender_id", insertable = false, updatable = false)
-    private User sender;
-
-    @ManyToOne
-    @JoinColumn(name = "receiver_id", insertable = false, updatable = false)
-    private User receiver;
+	@PrePersist
+	protected void onCreate() {
+		this.createdAt = LocalDateTime.now(); // Thiết lập thời gian tạo khi lưu
+	}
 }

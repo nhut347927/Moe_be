@@ -2,6 +2,8 @@ package com.moe.music.model;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -26,45 +28,42 @@ import lombok.NoArgsConstructor;
 @Table(name = "ActivityLogs")
 public class ActivityLog {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "log_id")
-    private int logId;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(name = "log_id")
+	private int logId;
 
-    @NotNull
-    @Column(name = "user_id", nullable = false)
-    private int userId;
+	@NotNull
+	@Size(min = 1)
+	@Column(name = "action", nullable = false)
+	private String action;
 
-    @NotNull
-    @Size(min = 1)
-    @Column(name = "action", nullable = false)
-    private String action;
+	@Enumerated(EnumType.STRING)
+	@NotNull
+	@Column(name = "target_type", nullable = false)
+	private TargetType targetType;
 
-    @Enumerated(EnumType.STRING)
-    @NotNull
-    @Column(name = "target_type", nullable = false)
-    private TargetType targetType;
+	@NotNull
+	@Column(name = "target_id", nullable = false)
+	private int targetId;
 
-    @NotNull
-    @Column(name = "target_id", nullable = false)
-    private int targetId;
+	@Column(name = "created_at", nullable = false, updatable = false, insertable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+	private LocalDateTime createdAt;
 
-    @Column(name = "created_at", nullable = false, updatable = false, insertable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-    private LocalDateTime createdAt;
+	
+	@PrePersist
+	protected void onCreate() {
+		this.createdAt = LocalDateTime.now();
+	}
 
-    // Callback to automatically set createdAt
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-    }
+	
+	public enum TargetType {
+		POST, COMMENT, SONG, REEL, PLAYLIST
+	}
 
-    // Enum for target types
-    public enum TargetType {
-        POST, COMMENT, SONG, REEL, PLAYLIST
-    }
-
-    // Relationships
-    @ManyToOne
-    @JoinColumn(name = "user_id", insertable = false, updatable = false)
-    private User user;
+	
+	@ManyToOne
+	@JoinColumn(name = "user_id", insertable = false, updatable = false)
+	@JsonBackReference
+	private User user;
 }
