@@ -18,7 +18,7 @@ import com.moe.music.service.CustomUserDetailsService;
 public class SecurityConfig {
 
     @Autowired
-    private CustomUserDetailsService userDetailsService; // Inject your UserDetailsService
+    private CustomUserDetailsService userDetailsService; 
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -30,7 +30,10 @@ public class SecurityConfig {
         http.csrf().disable()
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/api/auth/**").permitAll() // Sử dụng requestMatchers thay vì antMatchers
-                .anyRequest().authenticated()
+          //      .requestMatchers("/api/user/**").authenticated() // Cần xác thực
+                // Các API yêu cầu quyền cụ thể
+            //    .requestMatchers("/api/admin/**").hasAuthority("ADMIN") // Cần quyền ADMIN
+                .anyRequest().authenticated() // Tất cả các yêu cầu khác cần xác thực
             );
         return http.build();
     }

@@ -41,6 +41,6 @@ public class Role {
 	
 	@OneToMany(mappedBy = "role", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
-	private List<UserRole> userRoles;
+	private List<User> users;
 
 }

@@ -9,7 +9,6 @@ import com.moe.music.exception.AppException;
 import com.moe.music.jpa.UserJPA;
 import com.moe.music.model.User;
 import com.moe.music.service.TokenService;
-import com.moe.music.service.UserService;
 
 @Component
 public class JwtUtil {
@@ -24,36 +23,49 @@ public class JwtUtil {
 	}
 
 	/**
-	 * Trích xuất và kiểm tra token từ authHeader.
+	 * Extracts and verifies the token from the authHeader.
 	 *
-	 * @param authHeader Header chứa token
-	 * @return Đối tượng User tương ứng với token
-	 * @throws AppException nếu có lỗi trong quá trình xác thực
+	 * @param authHeader Header containing the token
+	 * @return User object associated with the token
+	 * @throws AppException if there is an error during authentication
 	 */
 	public User getUserFromAuthHeader(String authHeader) throws AppException {
-		// Kiểm tra xem header có hợp lệ hay không
+
 		if (!StringUtils.hasText(authHeader) || !authHeader.startsWith("Bearer ")) {
-			throw new AppException("Token không hợp lệ. Vui lòng cung cấp token hợp lệ.",
-					HttpStatus.UNAUTHORIZED.value());
+			throw new AppException("Invalid token. Please provide a valid token.", HttpStatus.UNAUTHORIZED.value());
 		}
 
-		// Trích xuất token từ header substring bỏ "Bearer " 7 kí tự
 		String token = authHeader.substring(7);
 
-		// Kiểm tra tính hợp lệ của token
-		if (!tokenService.validateJwtToken(token)) {
-			throw new AppException("Token đã hết hạn hoặc không hợp lệ.", HttpStatus.UNAUTHORIZED.value());
-		}
-
-		// Lấy tên người dùng từ token
+		// Get email from token
 		String email = tokenService.getEmailFromJwtToken(token);
-
-		// Tìm kiếm người dùng trong hệ thống
 		User user = userJPA.findByEmail(email);
-		if (user == null) {
-			throw new AppException("Không tìm thấy người dùng với email: " + email, HttpStatus.NOT_FOUND.value());
-		}
 
-		return user;
+		// Validate access token
+		if (tokenService.validateJwtToken(token)) {
+			if (user == null) {
+				throw new AppException("User not found with email: " + email, HttpStatus.NOT_FOUND.value());
+			}
+			return user;
+		} else {
+			// Access token is expired, check refresh token
+			if (user == null) {
+				throw new AppException("User not found with email: " + email, HttpStatus.NOT_FOUND.value());
+			}
+
+			String refreshToken = user.getRefreshToken();
+			if (refreshToken != null && tokenService.validateRefreshToken(user, refreshToken)) {
+				// Refresh token is valid, generate new access token
+				String newAccessToken = tokenService.generateJwtToken(user);
+				// Optionally, update the user's refresh token here if needed
+				return user; // Return the user object or an updated token response as needed
+			} else {
+				// Both access token and refresh token are invalid
+				// Redirect to login
+				throw new AppException(
+						"Both access token and refresh token are invalid or expired. Please log in again.",
+						HttpStatus.UNAUTHORIZED.value());
+			}
+		}
 	}
 }

@@ -23,22 +23,22 @@ public class Setting {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Integer settingId; // Khóa chính
+	private Integer settingId;
 
 	@Column(name = "setting_key", nullable = false, unique = true, length = 100)
-	private String settingKey; // Khóa cấu hình (VD: "app_name", "theme")
+	private String settingKey;
 
 	@Column(length = 255)
-	private String value; // Giá trị cấu hình
+	private String value;
 
 	@Column(name = "description")
-	private String description; // Mô tả về cấu hình
+	private String description;
 
 	@Column(name = "created_at", updatable = false)
-	private LocalDateTime createdAt; // Thời gian tạo
+	private LocalDateTime createdAt;
 
 	@Column(name = "updated_at")
-	private LocalDateTime updatedAt; // Thời gian cập nhật
+	private LocalDateTime updatedAt;
 
 	@PrePersist
 	protected void onCreate() {

@@ -3,6 +3,7 @@ package com.moe.music.model;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.CascadeType;
@@ -13,6 +14,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
@@ -87,6 +90,9 @@ public class User {
 
 	@Column(name = "refresh_token", length = 255)
 	private String refreshToken;
+	
+	@Column(name = "refresh_token_expires")
+	private LocalDateTime refreshTokenExpires; 
 
 	@Column(name = "password_reset_token", length = 255)
 	private String passwordResetToken;
@@ -96,6 +102,12 @@ public class User {
 
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
+	
+	@ManyToOne
+	@JoinColumn(name = "roleId", nullable = false)
+	@NotNull(message = "Role ID cannot be null")
+	@JsonBackReference
+	private Role role;
 
 	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
@@ -161,9 +173,7 @@ public class User {
 	@JsonManagedReference
 	private List<UserPlaylist> userPlaylists;
 
-	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-	@JsonManagedReference
-	private List<UserRole> userRoles;
+	
 
 	@PrePersist
 	protected void onCreate() {

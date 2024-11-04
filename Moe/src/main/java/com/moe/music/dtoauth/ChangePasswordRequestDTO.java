@@ -3,7 +3,7 @@ package com.moe.music.dtoauth;
 import lombok.Data;
 
 @Data
-public class ChangePasswordRequest {
+public class ChangePasswordRequestDTO {
     private String oldPassword;
     private String newPassword;
 }

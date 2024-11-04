@@ -1,8 +1,13 @@
 package com.moe.music.service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.Key;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.Date;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,21 +19,25 @@ import com.moe.music.model.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 
 @Service
 public class TokenService {
 
-	@Value("${app.jwtSecret}")
-	private String jwtSecret;
+	private final Key key;
+	private final UserJPA userJPA;
 
 	@Value("${app.expiration}")
 	private int jwtExpirationMs;
 
-	private final UserJPA userJPA;
-
 	@Autowired
-	public TokenService(UserJPA userJPA) {
+	public TokenService(UserJPA userJPA, @Value("${app.jwtSecret}") String jwtSecret) {
 		this.userJPA = userJPA;
+		byte[] secretBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
+		if (secretBytes.length < 32) {
+			throw new IllegalArgumentException("JWT secret key must be at least 32 bytes long.");
+		}
+		this.key = Keys.hmacShaKeyFor(secretBytes);
 	}
 
 	/**
@@ -38,9 +47,18 @@ public class TokenService {
 	 * @return Chuỗi JWT Token
 	 */
 	public String generateJwtToken(User user) {
-		return Jwts.builder().setSubject(user.getEmail()).claim("userId", user.getUserId()).setIssuedAt(new Date())
+		Set<String> permissions;
+
+		if ("GUEST".equalsIgnoreCase(user.getRole().getRoleName())) {
+			permissions = Collections.emptySet();
+		} else {
+			permissions = user.getRole().getRolePermission().stream()
+					.map(rolePermission -> rolePermission.getPermission().getActionName()).collect(Collectors.toSet());
+		}
+
+		return Jwts.builder().setSubject(user.getEmail()).claim("permissions", permissions).setIssuedAt(new Date())
 				.setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
-				.signWith(SignatureAlgorithm.HS256, jwtSecret).compact();
+				.signWith(key, SignatureAlgorithm.HS256).compact();
 	}
 
 	/**
@@ -51,7 +69,7 @@ public class TokenService {
 	 */
 	public boolean validateJwtToken(String token) {
 		try {
-			Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(token);
+			Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
 			return true;
 		} catch (Exception e) {
 			return false;
@@ -65,7 +83,7 @@ public class TokenService {
 	 * @return Tên người dùng từ token hoặc null nếu token không hợp lệ
 	 */
 	public String getEmailFromJwtToken(String token) {
-		return Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(token).getBody().getSubject();
+		return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody().getSubject();
 	}
 
 	/**
@@ -75,7 +93,7 @@ public class TokenService {
 	 * @return Thời gian hết hạn của token
 	 */
 	public Date getExpirationDateFromJwtToken(String token) {
-		Claims claims = Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(token).getBody();
+		Claims claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
 		return claims.getExpiration();
 	}
 
@@ -96,10 +114,25 @@ public class TokenService {
 	 * @return Chuỗi Refresh Token
 	 */
 	public String generateRefreshToken(User user) {
-		String refreshToken = UUID.randomUUID().toString();
-		user.setRefreshToken(refreshToken);
-		userJPA.save(user);
-		return refreshToken;
+		try {
+			String refreshToken = UUID.randomUUID().toString();
+			user.setRefreshToken(refreshToken);
+			user.setRefreshTokenExpires(LocalDateTime.now().plusDays(90)); // Thời hạn 90 ngày
+			userJPA.save(user);
+			return refreshToken;
+		} catch (Exception e) {
+			throw new RuntimeException("Failed to generate refresh token: " + e.getMessage(), e);
+		}
+	}
+
+	/**
+	 * Kiểm tra Refresh Token có hợp lệ với người dùng hay không.
+	 *
+	 * @param user Đối tượng người dùng
+	 * @return true nếu refresh token hợp lệ, ngược lại false
+	 */
+	public boolean isRefreshTokenExpired(User user) {
+		return user.getRefreshTokenExpires().isBefore(LocalDateTime.now());
 	}
 
 	/**
@@ -110,7 +143,7 @@ public class TokenService {
 	 * @return true nếu refresh token hợp lệ, ngược lại false
 	 */
 	public boolean validateRefreshToken(User user, String refreshToken) {
-		return refreshToken.equals(user.getRefreshToken());
+		return refreshToken.equals(user.getRefreshToken()) && !isRefreshTokenExpired(user);
 	}
 
 	/**
