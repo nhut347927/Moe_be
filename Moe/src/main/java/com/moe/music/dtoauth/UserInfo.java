@@ -1,8 +1,5 @@
 package com.moe.music.dtoauth;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
 import com.moe.music.model.User.Gender;
 
 import lombok.AllArgsConstructor;
@@ -19,5 +16,5 @@ public class UserInfo {
 	private String profilePictureUrl;
 	private String bio;
 	private Gender gender;
-	private List<String> roles;
+	private String roles;
 }

@@ -10,6 +10,9 @@ import com.moe.music.jpa.UserJPA;
 import com.moe.music.model.User;
 import com.moe.music.service.TokenService;
 
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
+
 @Component
 public class JwtUtil {
 
@@ -29,7 +32,7 @@ public class JwtUtil {
 	 * @return User object associated with the token
 	 * @throws AppException if there is an error during authentication
 	 */
-	public User getUserFromAuthHeader(String authHeader) throws AppException {
+	public User getUserFromAuthHeader(String authHeader, HttpServletResponse response) throws AppException {
 
 		if (!StringUtils.hasText(authHeader) || !authHeader.startsWith("Bearer ")) {
 			throw new AppException("Invalid token. Please provide a valid token.", HttpStatus.UNAUTHORIZED.value());
@@ -37,31 +40,33 @@ public class JwtUtil {
 
 		String token = authHeader.substring(7);
 
-		// Get email from token
 		String email = tokenService.getEmailFromJwtToken(token);
 		User user = userJPA.findByEmail(email);
 
-		// Validate access token
 		if (tokenService.validateJwtToken(token)) {
 			if (user == null) {
 				throw new AppException("User not found with email: " + email, HttpStatus.NOT_FOUND.value());
 			}
 			return user;
 		} else {
-			// Access token is expired, check refresh token
 			if (user == null) {
 				throw new AppException("User not found with email: " + email, HttpStatus.NOT_FOUND.value());
 			}
 
 			String refreshToken = user.getRefreshToken();
 			if (refreshToken != null && tokenService.validateRefreshToken(user, refreshToken)) {
-				// Refresh token is valid, generate new access token
+
 				String newAccessToken = tokenService.generateJwtToken(user);
-				// Optionally, update the user's refresh token here if needed
-				return user; // Return the user object or an updated token response as needed
+
+				Cookie newAccessCookie = new Cookie("accessToken", newAccessToken);
+				newAccessCookie.setHttpOnly(true);
+				newAccessCookie.setPath("/");
+				// Đặt thời hạn 1 năm cho cookie (365 * 24 * 60 * 60 giây)
+				newAccessCookie.setMaxAge(365 * 24 * 60 * 60);
+				response.addCookie(newAccessCookie);
+
+				return user;
 			} else {
-				// Both access token and refresh token are invalid
-				// Redirect to login
 				throw new AppException(
 						"Both access token and refresh token are invalid or expired. Please log in again.",
 						HttpStatus.UNAUTHORIZED.value());

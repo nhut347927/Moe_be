@@ -1,6 +1,7 @@
 package com.moe.music.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,6 +14,8 @@ import com.moe.music.dtoauth.ChangePasswordRequestDTO;
 import com.moe.music.dtoauth.LoginRequestDTO;
 import com.moe.music.dtoauth.LoginResponseDTO;
 import com.moe.music.dtoauth.RegisterRequestDTO;
+import com.moe.music.exception.AppException;
+import com.moe.music.jpa.UserJPA;
 import com.moe.music.model.User;
 import com.moe.music.response.ResponseAPI;
 import com.moe.music.service.UserService;
@@ -20,6 +23,9 @@ import com.moe.music.service.UserService;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+	
+	@Autowired
+	private UserJPA userJPA;
 
 	@Autowired
 	private UserService userService;
@@ -32,12 +38,19 @@ public class AuthController {
 			response.setCode(200);
 			response.setMessage("Registration successful");
 			response.setData(registeredUser);
-			return ResponseEntity.status(200).body(response);
+			return ResponseEntity.status(HttpStatus.OK).body(response);
+		} catch (AppException e) {
+			// Bắt AppException để trả về mã trạng thái và thông điệp cụ thể
+			response.setCode(e.getStatusCode());
+			response.setMessage(e.getMessage());
+			response.setData(null);
+			return ResponseEntity.status(e.getStatusCode()).body(response);
 		} catch (Exception e) {
-			response.setCode(500);
+			// Bắt các loại ngoại lệ khác và trả về mã lỗi chung
+			response.setCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			response.setMessage("An error occurred: " + e.getMessage());
 			response.setData(null);
-			return ResponseEntity.status(500).body(response);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
 
@@ -50,36 +63,59 @@ public class AuthController {
 			response.setMessage("Login successful");
 			response.setData(login);
 			return ResponseEntity.ok(response);
+		} catch (AppException e) {
+			// Bắt AppException để trả về mã trạng thái và thông điệp cụ thể
+			response.setCode(e.getStatusCode());
+			response.setMessage(e.getMessage());
+			response.setData(null);
+			return ResponseEntity.status(e.getStatusCode()).body(response);
 		} catch (Exception e) {
-			response.setCode(500);
+			// Bắt các loại ngoại lệ khác và trả về mã lỗi chung
+			response.setCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			response.setMessage("An error occurred: " + e.getMessage());
 			response.setData(null);
-			return ResponseEntity.status(500).body(response);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
 
 	@PutMapping("/change-password")
-	public ResponseEntity<ResponseAPI<Void>> changePassword(@AuthenticationPrincipal User user,
+	public ResponseEntity<ResponseAPI<Void>> changePassword(
+			@AuthenticationPrincipal org.springframework.security.core.userdetails.User userDetails,
 			@RequestBody ChangePasswordRequestDTO request) {
 		ResponseAPI<Void> response = new ResponseAPI<>();
 		try {
+			if (userDetails == null) {
+				response.setCode(HttpStatus.UNAUTHORIZED.value());
+				response.setMessage("User is not authenticated");
+				return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+			}
+
+			User user = userJPA.findByEmail(userDetails.getUsername());
+			if (user == null) {
+				response.setCode(HttpStatus.UNAUTHORIZED.value());
+				response.setMessage("User is not authenticated");
+				return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+			}
 
 			if (!userService.validateOldPassword(user, request.getOldPassword())) {
-				response.setCode(400); // 400 Bad Request
+				response.setCode(HttpStatus.BAD_REQUEST.value());
 				response.setMessage("Old password is incorrect");
 				return ResponseEntity.badRequest().body(response);
 			}
 
 			userService.changePassword(user, request.getNewPassword());
-			response.setCode(200);
+			response.setCode(HttpStatus.OK.value());
 			response.setMessage("Password changed successfully");
-			response.setData(null);
 			return ResponseEntity.ok(response);
+		} catch (AppException e) {
+			response.setCode(e.getStatusCode());
+			response.setMessage(e.getMessage());
+			return ResponseEntity.status(e.getStatusCode()).body(response);
 		} catch (Exception e) {
-			response.setCode(500);
+			response.setCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			response.setMessage("An error occurred: " + e.getMessage());
-			response.setData(null);
-			return ResponseEntity.status(500).body(response);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
+
 }

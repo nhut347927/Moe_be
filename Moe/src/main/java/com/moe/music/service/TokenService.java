@@ -83,6 +83,9 @@ public class TokenService {
 	 * @return Tên người dùng từ token hoặc null nếu token không hợp lệ
 	 */
 	public String getEmailFromJwtToken(String token) {
+		if (!validateJwtToken(token)) {
+			return null;
+		}
 		return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody().getSubject();
 	}
 
@@ -104,7 +107,13 @@ public class TokenService {
 	 * @return true nếu token chưa hết hạn, ngược lại false
 	 */
 	public boolean isTokenExpired(String token) {
-		return getExpirationDateFromJwtToken(token).before(new Date());
+		try {
+			Date expirationDate = getExpirationDateFromJwtToken(token);
+			return expirationDate.before(new Date());
+		} catch (Exception e) {
+			System.out.println("Error checking token expiration: " + e.getMessage());
+			return true;
+		}
 	}
 
 	/**
