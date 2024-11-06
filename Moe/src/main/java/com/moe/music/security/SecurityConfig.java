@@ -10,20 +10,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import com.moe.music.service.CustomUserDetailsService;
-
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     @Autowired
-    private CustomUserDetailsService userDetailsService; 
-
-    @Autowired
-    private JwtRequestFilter jwtRequestFilter; // Tiêm JwtRequestFilter
+    private JwtRequestFilter jwtRequestFilter;
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
+    PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
@@ -31,12 +26,11 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf().disable()
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/api/auth/register", "/api/auth/login").permitAll()
-                .requestMatchers("/change-password").authenticated()
+                .requestMatchers("/api/auth/register", "/api/auth/login").permitAll() 
+                .requestMatchers("/api/auth/change-password").hasAuthority("CHANGE_PASSWORD") 
                 .anyRequest().authenticated()
             )
-            .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class); // Sử dụng jwtRequestFilter đã tiêm
+            .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class); 
         return http.build();
     }
 }
-

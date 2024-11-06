@@ -1,7 +1,13 @@
 package com.moe.music.model;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
@@ -33,7 +39,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "Users")
-public class User {
+public class User implements UserDetails {
+
+	private static final long serialVersionUID = 1L;
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -90,9 +98,9 @@ public class User {
 
 	@Column(name = "refresh_token", length = 255)
 	private String refreshToken;
-	
+
 	@Column(name = "refresh_token_expires")
-	private LocalDateTime refreshTokenExpires; 
+	private LocalDateTime refreshTokenExpires;
 
 	@Column(name = "password_reset_token", length = 255)
 	private String passwordResetToken;
@@ -102,7 +110,7 @@ public class User {
 
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
-	
+
 	@ManyToOne
 	@JoinColumn(name = "roleId", nullable = false)
 	@NotNull(message = "Role ID cannot be null")
@@ -173,8 +181,6 @@ public class User {
 	@JsonManagedReference
 	private List<UserPlaylist> userPlaylists;
 
-	
-
 	@PrePersist
 	protected void onCreate() {
 		LocalDateTime now = LocalDateTime.now();
@@ -185,6 +191,44 @@ public class User {
 	@PreUpdate
 	protected void onUpdate() {
 		this.updatedAt = LocalDateTime.now();
+	}
+
+	// Implementations for UserDetails interface
+	@Override
+	public Collection<? extends GrantedAuthority> getAuthorities() {
+		return role != null && role.getRolePermission() != null ? role.getRolePermission().stream()
+				.map(rolePermission -> new SimpleGrantedAuthority(rolePermission.getPermission().getActionName()))
+				.collect(Collectors.toList()) : List.of();
+	}
+
+	@Override
+	public String getPassword() {
+		return passwordHash;
+	}
+
+	@Override
+	public String getUsername() {
+		return email;
+	}
+
+	@Override
+	public boolean isAccountNonExpired() {
+		return true;
+	}
+
+	@Override
+	public boolean isAccountNonLocked() {
+		return true;
+	}
+
+	@Override
+	public boolean isCredentialsNonExpired() {
+		return true;
+	}
+
+	@Override
+	public boolean isEnabled() {
+		return isActive != null && isActive;
 	}
 
 	public enum Gender {

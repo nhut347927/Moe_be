@@ -3,7 +3,6 @@ package com.moe.music.service;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.Date;
 import java.util.Set;
 import java.util.UUID;
@@ -13,10 +12,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.moe.music.exception.AppException;
 import com.moe.music.jpa.UserJPA;
 import com.moe.music.model.User;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
@@ -41,20 +42,24 @@ public class TokenService {
 	}
 
 	/**
+	 * Phương thức để trích xuất tất cả claims.
+	 *
+	 * @param token token
+	 * @return Claims
+	 */
+	public Claims extractAllClaims(String token) {
+		return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
+	}
+
+	/**
 	 * Tạo JWT Token cho người dùng.
 	 *
 	 * @param user Đối tượng người dùng
 	 * @return Chuỗi JWT Token
 	 */
 	public String generateJwtToken(User user) {
-		Set<String> permissions;
-
-		if ("GUEST".equalsIgnoreCase(user.getRole().getRoleName())) {
-			permissions = Collections.emptySet();
-		} else {
-			permissions = user.getRole().getRolePermission().stream()
-					.map(rolePermission -> rolePermission.getPermission().getActionName()).collect(Collectors.toSet());
-		}
+		Set<String> permissions = user.getRole().getRolePermission().stream()
+				.map(rolePermission -> rolePermission.getPermission().getActionName()).collect(Collectors.toSet());
 
 		return Jwts.builder().setSubject(user.getEmail()).claim("permissions", permissions).setIssuedAt(new Date())
 				.setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
@@ -64,14 +69,22 @@ public class TokenService {
 	/**
 	 * Kiểm tra tính hợp lệ của token.
 	 *
-	 * @param token token cần kiểm tra
+	 * @param token cần kiểm tra
 	 * @return true nếu token hợp lệ và chưa hết hạn, ngược lại false
 	 */
 	public boolean validateJwtToken(String token) {
 		try {
-			Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
-			return true;
+			Claims claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
+
+			Date expirationDate = claims.getExpiration();
+
+			// Kiểm tra token có hết hạn không
+			return expirationDate.after(new Date());
+		} catch (ExpiredJwtException e) {
+			// Token hết hạn
+			return false;
 		} catch (Exception e) {
+			// Các lỗi khác về token
 			return false;
 		}
 	}
@@ -83,10 +96,16 @@ public class TokenService {
 	 * @return Tên người dùng từ token hoặc null nếu token không hợp lệ
 	 */
 	public String getEmailFromJwtToken(String token) {
-		if (!validateJwtToken(token)) {
+		try {
+			// Trích xuất email từ token bình thường nếu token hợp lệ
+			return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody().getSubject();
+		} catch (ExpiredJwtException e) {
+			// Token đã hết hạn, nhưng vẫn có thể lấy email từ claims
+			return e.getClaims().getSubject();
+		} catch (Exception e) {
+			// Các lỗi khác
 			return null;
 		}
-		return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody().getSubject();
 	}
 
 	/**

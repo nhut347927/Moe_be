@@ -3,6 +3,7 @@ package com.moe.music.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -23,7 +24,7 @@ import com.moe.music.service.UserService;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-	
+
 	@Autowired
 	private UserJPA userJPA;
 
@@ -79,18 +80,11 @@ public class AuthController {
 	}
 
 	@PutMapping("/change-password")
-	public ResponseEntity<ResponseAPI<Void>> changePassword(
-			@AuthenticationPrincipal org.springframework.security.core.userdetails.User userDetails,
+	public ResponseEntity<ResponseAPI<Void>> changePassword(@AuthenticationPrincipal User user,
 			@RequestBody ChangePasswordRequestDTO request) {
 		ResponseAPI<Void> response = new ResponseAPI<>();
 		try {
-			if (userDetails == null) {
-				response.setCode(HttpStatus.UNAUTHORIZED.value());
-				response.setMessage("User is not authenticated");
-				return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-			}
 
-			User user = userJPA.findByEmail(userDetails.getUsername());
 			if (user == null) {
 				response.setCode(HttpStatus.UNAUTHORIZED.value());
 				response.setMessage("User is not authenticated");
