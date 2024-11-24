@@ -1,5 +1,7 @@
 package com.moe.music.service;
 
+import java.util.Optional;
+
 import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -21,7 +23,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 	@Override
 	@Transactional(readOnly = true)
 	public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-		User user;
+		Optional<User> user;
 
 		try {
 			user = userJPA.findByEmail(email);
@@ -33,13 +35,13 @@ public class CustomUserDetailsService implements UserDetailsService {
 			throw new UsernameNotFoundException("User not found with email: " + email);
 		}
 
-		if (!user.getIsActive()) {
-			throw new AppException("User account is not active", 403);
+		if (user.get().getIsDeleted()) {
+			throw new AppException("User account has been deleted!", 403);
 		}
 
 		try {
-			if (user.getRole() != null && user.getRole().getRolePermission() != null) {
-				Hibernate.initialize(user.getRole().getRolePermission());
+			if (user.get().getRole() != null && user.get().getRole().getRolePermission() != null) {
+				Hibernate.initialize(user.get().getRole().getRolePermission());
 			} else {
 				System.out.println(
 						"Warning: User has no assigned role or permissions. Assigning default permissions if needed.");
@@ -48,6 +50,6 @@ public class CustomUserDetailsService implements UserDetailsService {
 			throw new AppException("Error initializing roles and permissions for email: " + email, 500);
 		}
 
-		return user;
+		return user.get();
 	}
 }

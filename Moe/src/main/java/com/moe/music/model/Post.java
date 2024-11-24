@@ -6,6 +6,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -21,6 +22,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Author: nhut379
+ */
 @Data
 @Entity
 @NoArgsConstructor
@@ -35,15 +39,16 @@ public class Post {
 	@ManyToOne
 	@JoinColumn(name = "user_id", nullable = false)
 	@JsonBackReference
-	private User user; // Liên kết đến người dùng
+	private User user;
 
 	@Column(columnDefinition = "TEXT")
 	private String content;
 
-	@ManyToOne
-	@JoinColumn(name = "song_id")
-	@JsonBackReference
-	private Song song;
+	@Column(name = "video", length = 255)
+	private String video;
+
+	@Column(name = "image", length = 255)
+	private String image;
 
 	@Column(name = "view_count", columnDefinition = "int default 0")
 	private Integer viewCount = 0;
@@ -57,15 +62,26 @@ public class Post {
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
 
-	@OneToMany(mappedBy = "post")
-	@JsonManagedReference
-	private List<PostComment> postComments;
+	@Column(name = "is_deleted", columnDefinition = "boolean default false")
+	private Boolean isDeleted = false;
 
-	@OneToMany(mappedBy = "post")
+	@OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
-	private List<PostLike> postLikes;
+	private List<PostStory> postStories;
 	
-	@OneToMany(mappedBy = "post")
+	@OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+	@JsonManagedReference
+	private List<Image> images;
+
+	@OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+	@JsonManagedReference
+	private List<Comment> comments;
+
+	@OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+	@JsonManagedReference
+	private List<Like> likes;
+
+	@OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
 	private List<PostTag> postTags;
 
@@ -79,5 +95,14 @@ public class Post {
 	@PreUpdate
 	protected void onUpdate() {
 		this.updatedAt = LocalDateTime.now();
+	}
+
+	public void softDelete() {
+		this.deletedAt = LocalDateTime.now();
+		this.isDeleted = true;
+	}
+
+	public void restore() {
+		this.isDeleted = false;
 	}
 }

@@ -13,34 +13,33 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Author: nhut379
+ */
 @Data
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "SongLikes")
-public class SongLike {
+@Table(name = "Post_Story")
+public class PostStory {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Integer likeId;
+	private Integer postStoryId;
 
 	@ManyToOne
-	@JoinColumn(name = "song_id", nullable = false)
-	@NotNull(message = "Song ID cannot be null")
+	@JoinColumn(name = "story_id", nullable = false)
 	@JsonBackReference
-	private Song song;
+	private Story story;
 
 	@ManyToOne
-	@JoinColumn(name = "user_id", nullable = false)
-	@NotNull(message = "User ID cannot be null")
+	@JoinColumn(name = "post_id", nullable = false)
 	@JsonBackReference
-	private User user;
+	private Post post;
 
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt;

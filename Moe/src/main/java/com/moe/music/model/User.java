@@ -29,11 +29,12 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
+/**
+ * Author: nhut379
+ */
 @Data
 @Entity
 @NoArgsConstructor
@@ -48,16 +49,13 @@ public class User implements UserDetails {
 	private Integer userId;
 
 	@Column(nullable = false, unique = true, length = 100)
-	@Email(message = "Email should be valid")
 	private String email;
 
 	@Column(name = "password_hash", nullable = false, length = 255)
-	@NotNull(message = "Password hash cannot be null")
 	@NotBlank(message = "Password hash cannot be empty")
 	private String passwordHash;
 
 	@Column(name = "display_name", length = 100)
-	@Size(max = 100, message = "Display name must not exceed 100 characters")
 	private String displayName;
 
 	@Column(name = "profile_picture_url", length = 255)
@@ -65,9 +63,6 @@ public class User implements UserDetails {
 
 	@Column(length = 255)
 	private String bio;
-
-	@Column(name = "website_url", length = 255)
-	private String websiteUrl;
 
 	@Column(length = 100)
 	private String location;
@@ -81,14 +76,17 @@ public class User implements UserDetails {
 	@Column(name = "is_verified", columnDefinition = "boolean default false")
 	private Boolean isVerified = false;
 
-	@Column(name = "is_active", columnDefinition = "boolean default true")
-	private Boolean isActive = true;
+	@Column(name = "is_deleted", columnDefinition = "boolean default false")
+	private Boolean isDeleted = false;
 
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt;
 
 	@Column(name = "updated_at")
 	private LocalDateTime updatedAt;
+	
+	@Column(name = "deleted_at")
+	private LocalDateTime deletedAt;
 
 	@Column(name = "last_login")
 	private LocalDateTime lastLogin;
@@ -108,8 +106,7 @@ public class User implements UserDetails {
 	@Column(name = "password_reset_expires")
 	private LocalDateTime passwordResetExpires;
 
-	@Column(name = "deleted_at")
-	private LocalDateTime deletedAt;
+
 
 	@ManyToOne
 	@JoinColumn(name = "roleId", nullable = false)
@@ -123,23 +120,11 @@ public class User implements UserDetails {
 
 	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
-	private List<PostComment> postComments;
+	private List<Comment> postComments;
 
 	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
-	private List<PostLike> postLikes;
-
-	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-	@JsonManagedReference
-	private List<Reel> reels;
-
-	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-	@JsonManagedReference
-	private List<ReelComment> reelComments;
-
-	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-	@JsonManagedReference
-	private List<ReelLike> reelLikes;
+	private List<Like> postLikes;
 
 	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
@@ -175,12 +160,17 @@ public class User implements UserDetails {
 
 	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
-	private List<SongLike> songLikes;
+	private List<UserStory> userStories;
 
-	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-	@JsonManagedReference
-	private List<UserPlaylist> userPlaylists;
+	public void softDelete() {
+		this.deletedAt = LocalDateTime.now();
+		this.isDeleted = true;
+	}
 
+	public void restore() {
+		this.isDeleted = false;
+	}
+	
 	@PrePersist
 	protected void onCreate() {
 		LocalDateTime now = LocalDateTime.now();
@@ -226,10 +216,6 @@ public class User implements UserDetails {
 		return true;
 	}
 
-	@Override
-	public boolean isEnabled() {
-		return isActive != null && isActive;
-	}
 
 	public enum Gender {
 		MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY

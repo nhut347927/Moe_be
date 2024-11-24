@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -14,34 +13,34 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Author: nhut379
+ */
 @Data
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "User_Playlists")
-public class UserPlaylist {
+@Table(name = "Images")
+public class Image {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Integer userPlaylistId;
+	private Integer imageId;
 
-	@ManyToOne(cascade = CascadeType.ALL)
-	@JoinColumn(name = "user_id", nullable = false)
+	@ManyToOne
+	@JoinColumn(name = "post_id", nullable = false)
 	@JsonBackReference
-	private User user;
+	private Post post;
 
-	@ManyToOne(cascade = CascadeType.ALL)
-	@JoinColumn(name = "playlist_id", nullable = false)
-	@JsonBackReference
-	private Playlist playlist;
-
-	@Column(name = "created_at", updatable = false)
+	@Column(name = "created_at")
 	private LocalDateTime createdAt;
+
+	@Column(name = "image_name", length = 255, nullable = false)
+	private String imageName;
 
 	@PrePersist
 	protected void onCreate() {

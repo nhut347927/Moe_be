@@ -12,7 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -29,7 +29,6 @@ public class Role {
 	private Integer roleId;
 
 	@Column(name = "role_name", nullable = false, unique = true, length = 50)
-	@NotNull(message = "Role name cannot be null")
 	private String roleName;
 
 	@Column(length = 255)

@@ -14,23 +14,23 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Autowired
-    private JwtRequestFilter jwtRequestFilter;
+	@Autowired
+	private JwtRequestFilter jwtRequestFilter;
 
-    @Bean
-    PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+	@Bean
+	PasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
+	}
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf().disable()
-            .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/api/auth/register", "/api/auth/login").permitAll() 
-                .requestMatchers("/api/auth/change-password").hasAuthority("CHANGE_PASSWORD") 
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class); 
-        return http.build();
-    }
+	@Bean
+	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+		http.csrf().disable()
+				.authorizeHttpRequests(authz -> authz
+						.requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/request-password-reset",
+								"/api/auth/reset-password")
+						.permitAll().requestMatchers("/api/auth/change-password").hasAuthority("VIEW")
+						.anyRequest().authenticated())
+				.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+		return http.build();
+	}
 }

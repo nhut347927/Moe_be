@@ -4,12 +4,14 @@ import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.moe.music.exception.AppException;
@@ -21,6 +23,8 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 
 @Service
 public class TokenService {
@@ -145,7 +149,7 @@ public class TokenService {
 		try {
 			String refreshToken = UUID.randomUUID().toString();
 			user.setRefreshToken(refreshToken);
-			user.setRefreshTokenExpires(LocalDateTime.now().plusDays(90)); // Thời hạn 90 ngày
+			user.setRefreshTokenExpires(LocalDateTime.now().plusDays(30)); // Thời hạn 90 ngày
 			userJPA.save(user);
 			return refreshToken;
 		} catch (Exception e) {
@@ -154,24 +158,62 @@ public class TokenService {
 	}
 
 	/**
-	 * Kiểm tra Refresh Token có hợp lệ với người dùng hay không.
+	 * Lấy thời gian hết hạn từ JWT refresh token.
 	 *
-	 * @param user Đối tượng người dùng
-	 * @return true nếu refresh token hợp lệ, ngược lại false
+	 * @param token JWT refresh token
+	 * @return Thời gian hết hạn của refresh token
 	 */
-	public boolean isRefreshTokenExpired(User user) {
-		return user.getRefreshTokenExpires().isBefore(LocalDateTime.now());
+	public LocalDateTime getExpirationDateFromJwtRefreshToken(String token) {
+		Optional<User> user = userJPA.findByrefreshToken(token);
+		if (user.isPresent()) {
+			return user.get().getRefreshTokenExpires();
+		} else {
+			throw new AppException("Refresh Token không hợp lệ hoặc không tồn tại", HttpStatus.UNAUTHORIZED.value());
+		}
 	}
 
 	/**
-	 * Kiểm tra Refresh Token có hợp lệ với người dùng hay không.
+	 * Kiểm tra tính hợp lệ của Refresh Token.
 	 *
-	 * @param user         Đối tượng người dùng
 	 * @param refreshToken Token cần kiểm tra
-	 * @return true nếu refresh token hợp lệ, ngược lại false
+	 * @return true nếu token hợp lệ, ngược lại false
 	 */
-	public boolean validateRefreshToken(User user, String refreshToken) {
-		return refreshToken.equals(user.getRefreshToken()) && !isRefreshTokenExpired(user);
+	public boolean validateRefreshToken(String refreshToken) {
+		try {
+			User user = getUserFromRefreshToken(refreshToken);
+			return refreshToken.equals(user.getRefreshToken())
+					&& user.getRefreshTokenExpires().isAfter(LocalDateTime.now());
+		} catch (Exception e) {
+			return false;
+		}
+	}
+
+	/**
+	 * Trích xuất Refresh Token từ cookie trong yêu cầu HTTP.
+	 *
+	 * @param request Yêu cầu HTTP
+	 * @return Refresh Token nếu tồn tại, ngược lại null
+	 */
+	public String extractTokenFromCookie(HttpServletRequest request) {
+		if (request.getCookies() != null) {
+			for (Cookie cookie : request.getCookies()) {
+				if ("refresh_token".equals(cookie.getName())) {
+					return cookie.getValue();
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Lấy đối tượng người dùng từ Refresh Token.
+	 *
+	 * @param refreshToken Token để xác thực người dùng
+	 * @return Đối tượng người dùng nếu token hợp lệ
+	 */
+	public User getUserFromRefreshToken(String refreshToken) {
+		Optional<User> user = userJPA.findByrefreshToken(refreshToken);
+		return user.get();
 	}
 
 	/**
@@ -181,6 +223,9 @@ public class TokenService {
 	 * @return Chuỗi token đặt lại mật khẩu
 	 */
 	public String generatePasswordResetToken(User user) {
+		if (user == null) {
+			throw new IllegalArgumentException("User cannot be null");
+		}
 		String resetToken = UUID.randomUUID().toString();
 		user.setPasswordResetToken(resetToken);
 		user.setPasswordResetExpires(LocalDateTime.now().plusHours(1));
@@ -207,6 +252,7 @@ public class TokenService {
 	 */
 	public void clearTokens(User user) {
 		user.setRefreshToken(null);
+		user.setRefreshTokenExpires(null);
 		user.setPasswordResetToken(null);
 		user.setPasswordResetExpires(null);
 		userJPA.save(user);

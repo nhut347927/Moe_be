@@ -2,52 +2,49 @@ package com.moe.music.model;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
+/**
+ * Author: nhut379
+ */
 @Data
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "Settings")
-public class Setting {
+@Table(name = "Likes")
+public class Like {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Integer settingId;
+	private Integer likeId;
 
-	@Column(name = "setting_key", nullable = false, unique = true, length = 100)
-	private String settingKey;
+	@ManyToOne
+	@JoinColumn(name = "post_id", nullable = false)
+	@JsonBackReference
+	private Post post;
 
-	@Column(length = 255)
-	private String value;
-
-	@Column(name = "description")
-	private String description;
+	@ManyToOne
+	@JoinColumn(name = "user_id", nullable = false)
+	@JsonBackReference
+	private User user;
 
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt;
 
-	@Column(name = "updated_at")
-	private LocalDateTime updatedAt;
-
 	@PrePersist
 	protected void onCreate() {
 		this.createdAt = LocalDateTime.now();
-		this.updatedAt = LocalDateTime.now();
-	}
-
-	@PreUpdate
-	protected void onUpdate() {
-		this.updatedAt = LocalDateTime.now();
 	}
 }

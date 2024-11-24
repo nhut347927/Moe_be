@@ -6,23 +6,27 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Author: nhut379
+ */
 @Data
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "Feedback")
+@Table(name = "Feedbacks")
 public class Feedback {
 
 	@Id
@@ -37,23 +41,22 @@ public class Feedback {
 	@Column(nullable = false)
 	private String content;
 
+	@Column(name = "image", length = 255)
+	private String image;
+
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt;
 
-	@Column(name = "updated_at")
-	private LocalDateTime updatedAt;
-
+	@Enumerated(EnumType.STRING)
 	@Column(name = "status", nullable = false, length = 20)
-	private String status = "unresolved";
+	private FeedbackStatus status = FeedbackStatus.UNRESOLVED;
 
 	@PrePersist
 	protected void onCreate() {
 		this.createdAt = LocalDateTime.now();
-		this.updatedAt = LocalDateTime.now();
 	}
 
-	@PreUpdate
-	protected void onUpdate() {
-		this.updatedAt = LocalDateTime.now(); // Cập nhật thời gian khi sửa đổi
+	public enum FeedbackStatus {
+		UNRESOLVED, RESOLVED, IN_PROGRESS
 	}
 }

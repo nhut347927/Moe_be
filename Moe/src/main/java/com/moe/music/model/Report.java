@@ -17,6 +17,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Author: nhut379
+ */
 @Data
 @Entity
 @NoArgsConstructor
@@ -24,32 +27,30 @@ import lombok.NoArgsConstructor;
 @Table(name = "Reports")
 public class Report {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer reportId;  // Khóa chính
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Integer reportId;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    @JsonBackReference
-    private User user;  // Người thực hiện báo cáo
+	@ManyToOne
+	@JoinColumn(name = "user_id", nullable = false)
+	@JsonBackReference
+	private User user;
 
-    @Column(name = "target_id", nullable = false)
-    private Integer targetId;  // ID của mục tiêu được báo cáo
+	@ManyToOne
+	@JoinColumn(name = "post_id", nullable = true)
+	private Post post;
 
-    @Column(name = "target_type", nullable = false, length = 20)
-    private String targetType;  // Loại mục tiêu (VD: "Post", "Song", "User")
+	@Column(name = "reason", nullable = false)
+	private String reason;
 
-    @Column(name = "reason", nullable = false)
-    private String reason;  // Lý do báo cáo
+	@Column(name = "status", nullable = false, length = 20)
+	private String status = "pending";
 
-    @Column(name = "status", nullable = false, length = 20)
-    private String status = "pending";  // Trạng thái báo cáo (VD: "pending", "resolved", "rejected")
+	@Column(name = "created_at", updatable = false)
+	private LocalDateTime createdAt;
 
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;  // Thời gian tạo
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now(); // Thiết lập thời gian tạo khi lưu
-    }
+	@PrePersist
+	protected void onCreate() {
+		this.createdAt = LocalDateTime.now();
+	}
 }

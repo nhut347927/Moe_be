@@ -17,6 +17,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Author: nhut379
+ */
 @Data
 @Entity
 @NoArgsConstructor
@@ -47,8 +50,23 @@ public class Message {
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt;
 
+	@Column(name = "deleted_at")
+	private LocalDateTime deletedAt;
+
+	@Column(name = "is_deleted", columnDefinition = "boolean default false")
+	private Boolean isDeleted = false;
+
 	@PrePersist
 	protected void onCreate() {
-		this.createdAt = LocalDateTime.now(); // Thiết lập thời gian tạo khi lưu
+		this.createdAt = LocalDateTime.now();
+	}
+
+	public void softDelete() {
+		this.deletedAt = LocalDateTime.now();
+		this.isDeleted = true;
+	}
+
+	public void restore() {
+		this.isDeleted = false;
 	}
 }

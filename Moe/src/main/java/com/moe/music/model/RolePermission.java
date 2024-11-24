@@ -27,10 +27,10 @@ public class RolePermission {
 	@ManyToOne
 	@JoinColumn(name = "role_id", nullable = false)
 	@JsonBackReference
-	private Role role; // Mối quan hệ với bảng Roles
+	private Role role; 
 
 	@ManyToOne
 	@JoinColumn(name = "permission_id", nullable = false)
 	@JsonBackReference
-	private Permission permission; // Mối quan hệ với bảng Permissions
+	private Permission permission; 
 }

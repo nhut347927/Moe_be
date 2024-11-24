@@ -17,6 +17,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Author: nhut379
+ */
 @Data
 @Entity
 @NoArgsConstructor
@@ -25,20 +28,19 @@ import lombok.NoArgsConstructor;
 public class Follower {
 
 	@Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
-	
-	
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(name = "id")
+	private Integer id;
+
 	@ManyToOne
-	@JoinColumn(name = "follower_id", nullable = false)
+	@JoinColumn(name = "follower_user_id", nullable = false)
 	@JsonBackReference
 	private User follower;
 
-	
 	@ManyToOne
-	@JoinColumn(name = "followed_id", nullable = false)
+	@JoinColumn(name = "followed_user_id", nullable = false)
 	@JsonBackReference
-	private User followed; // Người dùng được theo dõi
+	private User followed;
 
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt;

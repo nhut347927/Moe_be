@@ -15,12 +15,13 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Author: nhut379
+ */
 @Data
 @Entity
 @NoArgsConstructor
@@ -33,37 +34,29 @@ public class ActivityLog {
 	@Column(name = "log_id")
 	private int logId;
 
-	@NotNull
-	@Size(min = 1)
 	@Column(name = "action", nullable = false)
 	private String action;
 
 	@Enumerated(EnumType.STRING)
-	@NotNull
 	@Column(name = "target_type", nullable = false)
 	private TargetType targetType;
 
-	@NotNull
-	@Column(name = "target_id", nullable = false)
-	private int targetId;
+
+	@ManyToOne
+	@JoinColumn(name = "user_id", insertable = false, updatable = false)
+	@JsonBackReference
+	private User user;
+
 
 	@Column(name = "created_at", nullable = false, updatable = false, insertable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
 	private LocalDateTime createdAt;
 
-	
 	@PrePersist
 	protected void onCreate() {
 		this.createdAt = LocalDateTime.now();
 	}
 
-	
 	public enum TargetType {
-		POST, COMMENT, SONG, REEL, PLAYLIST
+		POST, COMMENT, LIKE, MESSAGE, PERMISSION, LOGIN, REGISTER, STORY, REPORT, SETTING
 	}
-
-	
-	@ManyToOne
-	@JoinColumn(name = "user_id", insertable = false, updatable = false)
-	@JsonBackReference
-	private User user;
 }

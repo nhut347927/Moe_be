@@ -16,7 +16,9 @@ import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
+/**
+ * Author: nhut379
+ */
 @Data
 @Entity
 @NoArgsConstructor
@@ -39,7 +41,7 @@ public class Notification {
 	@Column(name = "reference_id", nullable = false)
 	private Integer referenceId;
 
-	@Column(name = "title", length = 100)
+	@Column(name = "title", length = 255)
 	private String title;
 
 	@Column(name = "message")

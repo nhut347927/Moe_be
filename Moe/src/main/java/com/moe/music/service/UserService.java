@@ -1,5 +1,7 @@
 package com.moe.music.service;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.Optional;
 
@@ -12,7 +14,7 @@ import org.springframework.stereotype.Service;
 import com.moe.music.dtoauth.LoginRequestDTO;
 import com.moe.music.dtoauth.LoginResponseDTO;
 import com.moe.music.dtoauth.RegisterRequestDTO;
-import com.moe.music.dtoauth.UserInfo;
+import com.moe.music.dtoauth.UserRegisterResponseDTO;
 import com.moe.music.exception.AppException;
 import com.moe.music.jpa.RoleJPA;
 import com.moe.music.jpa.UserJPA;
@@ -39,49 +41,49 @@ public class UserService {
 	private TokenService tokenService;
 
 	@Transactional
-	public User register(RegisterRequestDTO request) {
+	public UserRegisterResponseDTO register(RegisterRequestDTO request) {
 
-		if (userJpa.findByEmail(request.getEmail()) != null) {
+		if (userJpa.findByEmail(request.getEmail().trim().toLowerCase()).isPresent()) {
 			throw new AppException("Email already exists", HttpStatus.CONFLICT.value());
 		}
 
-		Optional<Role> role;
-		try {
-			role = roleJPA.findById(4); // 4 ~ ROLE_GUEST
-		} catch (EntityNotFoundException e) {
-			throw new AppException("Role not found", HttpStatus.NOT_FOUND.value());
-		}
+		Role role = roleJPA.findById(2) // 2 ~ ROLE USER
+				.orElseThrow(() -> new AppException("Role not found", HttpStatus.NOT_FOUND.value()));
 
 		User user = new User();
-		user.setEmail(request.getEmail());
+		user.setEmail(request.getEmail().trim().toLowerCase());
 		user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-		user.setDisplayName(request.getDisplayName());
-		user.setBio(request.getBio());
+		user.setDisplayName(request.getDisplayName().trim());
+		user.setBio(request.getBio() != null ? request.getBio().trim() : "");
+		user.setProfilePictureUrl(request.getProfilePictureUrl() != null ? request.getProfilePictureUrl().trim() : "");
+		user.setRole(role);
 
+		String genderString = request.getGender() != null ? request.getGender().trim() : "";
 		try {
-			String genderString = request.getGender().toString();
-			Gender gender;
-			if (genderString != null) {
-
-				gender = Gender.valueOf(genderString.toUpperCase());
-			} else {
-
-				gender = Gender.PREFER_NOT_TO_SAY;
-			}
-			user.setGender(gender);
+			user.setGender(Gender.valueOf(genderString.toUpperCase()));
 		} catch (IllegalArgumentException e) {
 			user.setGender(Gender.PREFER_NOT_TO_SAY);
 		}
 
-		user.setProfilePictureUrl(request.getProfilePictureUrl());
-		user.setRole(role.get());
-
 		try {
-			return userJpa.save(user);
+
+			User savedUser = userJpa.save(user);
+
+			UserRegisterResponseDTO userInfo = new UserRegisterResponseDTO();
+			userInfo.setUserId(savedUser.getUserId());
+			userInfo.setEmail(savedUser.getEmail());
+			userInfo.setDisplayName(savedUser.getDisplayName());
+			userInfo.setBio(savedUser.getBio());
+			userInfo.setGender(savedUser.getGender());
+			userInfo.setRoles(role.getRoleName());
+
+			return userInfo;
+
 		} catch (DataIntegrityViolationException e) {
-			throw new AppException("Database error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
+			throw new AppException("Database constraint error: " + e.getRootCause().getMessage(),
+					HttpStatus.CONFLICT.value());
 		} catch (Exception e) {
-			throw new AppException("An error occurred during registration: " + e.getMessage(),
+			throw new AppException("An unexpected error occurred during registration: " + e.getMessage(),
 					HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
 	}
@@ -92,29 +94,41 @@ public class UserService {
 			throw new AppException("Email and password must not be empty", HttpStatus.BAD_REQUEST.value());
 		}
 
-		User user = userJpa.findByEmail(request.getEmail());
+		Optional<User> user = userJpa.findByEmail(request.getEmail());
 
-		if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+		if (user == null || !passwordEncoder.matches(request.getPassword(), user.get().getPasswordHash())) {
 			throw new AppException("Invalid email or password", HttpStatus.UNAUTHORIZED.value());
 		}
 
 		try {
-			String refreshToken = tokenService.generateRefreshToken(user);
-			String accessToken = tokenService.generateJwtToken(user);
+			String refreshToken = tokenService.generateRefreshToken(user.get());
+			String accessToken = tokenService.generateJwtToken(user.get());
+
+			System.out.println("Generated Access Token: " + accessToken);
+			System.out.println("Generated Refresh Token: " + refreshToken);
 
 			LoginResponseDTO responseDTO = new LoginResponseDTO();
 			responseDTO.setAccessToken(accessToken);
+			responseDTO.setRefreshToken(refreshToken);
 
 			Date expirationDate = tokenService.getExpirationDateFromJwtToken(accessToken);
 			long expiresInSeconds = (expirationDate.getTime() - System.currentTimeMillis()) / 1000;
-			long expiresInHours = expiresInSeconds / 3600; // Chia cho 3600 để chuyển đổi từ giây sang giờ
-			responseDTO.setExpiresIn(expiresInHours + " Giờ");
+			long expiresInHours = expiresInSeconds / 3600;
+			responseDTO.setAccessTokenExpiresIn(expiresInHours + " Giờ");
 
-			UserInfo userInfo = new UserInfo();
-			userInfo.setUserId(user.getUserId());
-			userInfo.setEmail(user.getEmail());
-			userInfo.setDisplayName(user.getDisplayName());
-			userInfo.setRoles(user.getRole().getRoleName());
+			LocalDateTime expirationDateRe = tokenService.getExpirationDateFromJwtRefreshToken(refreshToken);
+			long expiresInSecondsRe = ChronoUnit.SECONDS.between(LocalDateTime.now(), expirationDateRe);
+			long expiresInHoursRe = expiresInSecondsRe / 3600;
+			responseDTO.setRefreshTokenExpiresIn(expiresInHoursRe + " Giờ");
+
+			UserRegisterResponseDTO userInfo = new UserRegisterResponseDTO();
+			userInfo.setUserId(user.get().getUserId());
+			userInfo.setEmail(user.get().getEmail());
+			userInfo.setDisplayName(user.get().getDisplayName());
+			userInfo.setRoles(user.get().getRole().getRoleName());
+			userInfo.setBio(user.get().getBio());
+			userInfo.setGender(user.get().getGender());
+			userInfo.setProfilePictureUrl(user.get().getProfilePictureUrl());
 
 			responseDTO.setUser(userInfo);
 			return responseDTO;
@@ -157,5 +171,52 @@ public class UserService {
 		}
 
 		return true;
+	}
+
+	public User findByEmail(String email) {
+		if (email == null || email.isEmpty()) {
+			throw new IllegalArgumentException("Email cannot be null or empty");
+		}
+
+		return userJpa.findByEmail(email)
+				.orElseThrow(() -> new EntityNotFoundException("User with email " + email + " not found"));
+	}
+
+	public User findByResetToken(String token) {
+		if (token == null || token.isEmpty()) {
+			throw new IllegalArgumentException("Reset token cannot be null or empty");
+		}
+
+		return userJpa.findByPasswordResetToken(token)
+				.orElseThrow(() -> new EntityNotFoundException("User with reset token not found or token is expired"));
+	}
+
+	public void updatePassword(User user, String newPassword) {
+		if (user == null) {
+			throw new IllegalArgumentException("User cannot be null");
+		}
+
+		if (newPassword == null || newPassword.isEmpty()) {
+			throw new IllegalArgumentException("New password cannot be null or empty");
+		}
+
+		user.setPasswordHash(passwordEncoder.encode(newPassword));
+		user.setPasswordResetToken(null);
+		user.setPasswordResetExpires(null);
+		userJpa.save(user);
+	}
+
+	public void save(User user) {
+		if (user == null) {
+			throw new IllegalArgumentException("User cannot be null");
+		}
+		userJpa.save(user);
+	}
+
+	public void logOut(User user) {
+		if (user == null) {
+			throw new IllegalArgumentException("User cannot be null");
+		}
+		tokenService.clearTokens(user);
 	}
 }

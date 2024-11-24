@@ -12,12 +12,12 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
+/**
+ * Author: nhut379
+ */
 @Data
 @Entity
 @NoArgsConstructor
@@ -29,13 +29,8 @@ public class Permission {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer permissionId;
 
-	@Column(name = "module_name", nullable = false, length = 50)
-	@NotNull(message = "Module name cannot be null")
-	private String moduleName; // Ví dụ: 'Products', 'Users', 'Posts'
-
 	@Column(name = "action_name", nullable = false, length = 50)
-	@NotNull(message = "Action name cannot be null")
-	private String actionName; // Ví dụ: 'Create', 'Read', 'Update', 'Delete'
+	private String actionName;
 
 	@Column(length = 255)
 	private String description;
@@ -44,6 +39,4 @@ public class Permission {
 	@JsonManagedReference
 	private List<RolePermission> rolePermissions;
 
-	// Phương thức có thể thêm vào đây nếu cần, ví dụ như phương thức để kiểm tra
-	// quyền
 }

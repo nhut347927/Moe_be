@@ -1,10 +1,8 @@
 package com.moe.music.model;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,7 +11,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -21,35 +18,32 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Author: nhut379
+ */
 @Data
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "Reels")
-public class Reel {
+@Table(name = "Comments")
+public class Comment {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Integer reelId;
+	private Integer commentId;
+
+	@ManyToOne
+	@JoinColumn(name = "post_id", nullable = false)
+	@JsonBackReference
+	private Post post;
 
 	@ManyToOne
 	@JoinColumn(name = "user_id", nullable = false)
 	@JsonBackReference
 	private User user;
 
-	@Column(columnDefinition = "TEXT")
+	@Column(nullable = false)
 	private String content;
-
-	@Column(name = "video_url", nullable = false, length = 255)
-	private String videoUrl;
-
-	@ManyToOne
-	@JoinColumn(name = "song_id")
-	@JsonBackReference
-	private Song song;
-
-	@Column(name = "view_count", columnDefinition = "int default 0")
-	private Integer viewCount = 0;
 
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt;
@@ -60,13 +54,8 @@ public class Reel {
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
 
-	@OneToMany(mappedBy = "reel")
-	@JsonManagedReference
-	private List<ReelComment> reelComments;
-
-	@OneToMany(mappedBy = "reel")
-	@JsonManagedReference
-	private List<ReelLike> reelLikes;
+	@Column(name = "is_deleted", nullable = false, columnDefinition = "boolean default false")
+	private Boolean isDeleted = false;
 
 	@PrePersist
 	protected void onCreate() {
@@ -79,4 +68,10 @@ public class Reel {
 	protected void onUpdate() {
 		this.updatedAt = LocalDateTime.now();
 	}
+
+	public void softDelete() {
+		this.isDeleted = true;
+		this.deletedAt = LocalDateTime.now();
+	}
+
 }
