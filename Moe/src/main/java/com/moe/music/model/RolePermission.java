@@ -3,6 +3,7 @@ package com.moe.music.model;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -13,6 +14,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Author: nhut379
+ */
 @Data
 @Entity
 @NoArgsConstructor
@@ -24,13 +28,13 @@ public class RolePermission {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer rolePermissionId;
 
-	@ManyToOne
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "role_id", nullable = false)
 	@JsonBackReference
-	private Role role; 
+	private Role role;
 
-	@ManyToOne
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "permission_id", nullable = false)
 	@JsonBackReference
-	private Permission permission; 
+	private Permission permission;
 }

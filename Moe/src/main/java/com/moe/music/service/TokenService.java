@@ -100,17 +100,17 @@ public class TokenService {
 	 * @return Tên người dùng từ token hoặc null nếu token không hợp lệ
 	 */
 	public String getEmailFromJwtToken(String token) {
-		try {
-			// Trích xuất email từ token bình thường nếu token hợp lệ
-			return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody().getSubject();
-		} catch (ExpiredJwtException e) {
-			// Token đã hết hạn, nhưng vẫn có thể lấy email từ claims
-			return e.getClaims().getSubject();
-		} catch (Exception e) {
-			// Các lỗi khác
-			return null;
-		}
+	    try {
+	        // Trích xuất email từ token bình thường nếu token hợp lệ
+	        return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody().getSubject();
+	    } catch (ExpiredJwtException e) {
+	        // Token đã hết hạn, nhưng vẫn có thể lấy email từ claims
+	        return e.getClaims().getSubject();
+	    } catch (Exception e) {
+	        throw new AppException("Error parsing JWT token: " + e.getMessage(), HttpStatus.UNAUTHORIZED.value());
+	    }
 	}
+
 
 	/**
 	 * Lấy thời gian hết hạn từ JWT token.

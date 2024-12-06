@@ -17,6 +17,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -26,12 +27,12 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 /**
  * Author: nhut379
  */
@@ -84,7 +85,7 @@ public class User implements UserDetails {
 
 	@Column(name = "updated_at")
 	private LocalDateTime updatedAt;
-	
+
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
 
@@ -106,9 +107,7 @@ public class User implements UserDetails {
 	@Column(name = "password_reset_expires")
 	private LocalDateTime passwordResetExpires;
 
-
-
-	@ManyToOne
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "roleId", nullable = false)
 	@NotNull(message = "Role ID cannot be null")
 	@JsonBackReference
@@ -162,6 +161,18 @@ public class User implements UserDetails {
 	@JsonManagedReference
 	private List<UserStory> userStories;
 
+	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+	@JsonManagedReference
+	private List<Tag> tags;
+
+	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+	@JsonManagedReference
+	private List<View> views;
+
+	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+	@JsonManagedReference
+	private List<CommentLike> commentLikes;
+
 	public void softDelete() {
 		this.deletedAt = LocalDateTime.now();
 		this.isDeleted = true;
@@ -170,7 +181,7 @@ public class User implements UserDetails {
 	public void restore() {
 		this.isDeleted = false;
 	}
-	
+
 	@PrePersist
 	protected void onCreate() {
 		LocalDateTime now = LocalDateTime.now();
@@ -215,7 +226,6 @@ public class User implements UserDetails {
 	public boolean isCredentialsNonExpired() {
 		return true;
 	}
-
 
 	public enum Gender {
 		MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY

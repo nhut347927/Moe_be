@@ -12,11 +12,13 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Author: nhut379
+ */
 @Data
 @Entity
 @NoArgsConstructor
@@ -32,12 +34,12 @@ public class Role {
 	private String roleName;
 
 	@Column(length = 255)
-	private String description; 
-	
+	private String description;
+
 	@OneToMany(mappedBy = "role", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
 	private List<RolePermission> rolePermission;
-	
+
 	@OneToMany(mappedBy = "role", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
 	private List<User> users;

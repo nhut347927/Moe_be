@@ -4,6 +4,7 @@ import java.util.Optional;
 
 import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -28,28 +29,33 @@ public class CustomUserDetailsService implements UserDetailsService {
 		try {
 			user = userJPA.findByEmail(email);
 		} catch (Exception e) {
-			throw new AppException("Error retrieving user by email: " + email, 500);
+			throw new AppException("Error retrieving user by email: " + email,
+					HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
 
-		if (user == null) {
+		if (!user.isPresent()) {
 			throw new UsernameNotFoundException("User not found with email: " + email);
 		}
 
-		if (user.get().getIsDeleted()) {
-			throw new AppException("User account has been deleted!", 403);
+		if (Boolean.TRUE.equals(user.get().getIsDeleted())) {
+			throw new AppException("User account has been deleted!", HttpStatus.FORBIDDEN.value());
 		}
 
 		try {
-			if (user.get().getRole() != null && user.get().getRole().getRolePermission() != null) {
-				Hibernate.initialize(user.get().getRole().getRolePermission());
+			User foundUser = user.get();
+			if (foundUser.getRole() != null && foundUser.getRole().getRolePermission() != null) {
+				Hibernate.initialize(foundUser.getRole().getRolePermission());
 			} else {
-				System.out.println(
-						"Warning: User has no assigned role or permissions. Assigning default permissions if needed.");
+				throw new AppException(
+						"Warning: User has no assigned role or permissions. Assigning default permissions if needed.",
+						HttpStatus.BAD_REQUEST.value());
 			}
 		} catch (Exception e) {
-			throw new AppException("Error initializing roles and permissions for email: " + email, 500);
+			throw new AppException("Error initializing roles and permissions for email: " + email,
+					HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
 
 		return user.get();
 	}
+
 }

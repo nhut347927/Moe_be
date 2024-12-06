@@ -51,10 +51,12 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 			try {
 				email = tokenService.getEmailFromJwtToken(jwt);
 			} catch (ExpiredJwtException e) {
-				sendErrorResponse(response, "Token has expired", HttpServletResponse.SC_UNAUTHORIZED);
+				sendErrorResponse(response, "JWT token has expired. Please login again.",
+						HttpServletResponse.SC_UNAUTHORIZED);
 				return;
 			} catch (AppException e) {
-				sendErrorResponse(response, "Token is invalid or does not exist", HttpServletResponse.SC_UNAUTHORIZED);
+				sendErrorResponse(response, "Invalid or missing token. Please provide a valid token.",
+						HttpServletResponse.SC_UNAUTHORIZED);
 				return;
 			}
 		}

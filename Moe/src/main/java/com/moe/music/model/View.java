@@ -22,15 +22,15 @@ import lombok.NoArgsConstructor;
  * Author: nhut379
  */
 @Data
-@Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "Likes")
-public class Like {
+@Entity
+@Table(name = "Views")
+public class View {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Integer likeId;
+	private Integer id;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "post_id", nullable = false)

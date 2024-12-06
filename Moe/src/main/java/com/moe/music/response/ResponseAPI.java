@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
+import java.util.Map;
 
 @Data
 @NoArgsConstructor
@@ -13,9 +13,8 @@ public class ResponseAPI<T> {
 	private int code;
 	private String message;
 	private T data;
-	private List<String> errors;
+	private Map<String, String> errors;
 
-	// Phương thức tiện ích để tạo phản hồi thành công
 	public static <T> ResponseAPI<T> success(T data, String message) {
 		ResponseAPI<T> response = new ResponseAPI<>();
 		response.setCode(200);
@@ -24,8 +23,7 @@ public class ResponseAPI<T> {
 		return response;
 	}
 
-	// Phương thức tiện ích để tạo phản hồi lỗi
-	public static ResponseAPI<Void> error(int code, String message, List<String> errors) {
+	public static ResponseAPI<Void> error(int code, String message, Map<String, String> errors) {
 		ResponseAPI<Void> response = new ResponseAPI<>();
 		response.setCode(code);
 		response.setMessage(message);

@@ -47,6 +47,10 @@ public class UserService {
 			throw new AppException("Email already exists", HttpStatus.CONFLICT.value());
 		}
 
+		if (request.getPassword().equals(request.getConfirmPassword())) {
+			throw new AppException("Password and confirm password must match!", 400);
+		}
+
 		Role role = roleJPA.findById(2) // 2 ~ ROLE USER
 				.orElseThrow(() -> new AppException("Role not found", HttpStatus.NOT_FOUND.value()));
 
@@ -103,9 +107,6 @@ public class UserService {
 		try {
 			String refreshToken = tokenService.generateRefreshToken(user.get());
 			String accessToken = tokenService.generateJwtToken(user.get());
-
-			System.out.println("Generated Access Token: " + accessToken);
-			System.out.println("Generated Refresh Token: " + refreshToken);
 
 			LoginResponseDTO responseDTO = new LoginResponseDTO();
 			responseDTO.setAccessToken(accessToken);
@@ -174,10 +175,6 @@ public class UserService {
 	}
 
 	public User findByEmail(String email) {
-		if (email == null || email.isEmpty()) {
-			throw new IllegalArgumentException("Email cannot be null or empty");
-		}
-
 		return userJpa.findByEmail(email)
 				.orElseThrow(() -> new EntityNotFoundException("User with email " + email + " not found"));
 	}

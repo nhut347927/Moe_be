@@ -9,6 +9,9 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -36,7 +39,7 @@ public class Post {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer postId;
 
-	@ManyToOne
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "user_id", nullable = false)
 	@JsonBackReference
 	private User user;
@@ -47,8 +50,8 @@ public class Post {
 	@Column(name = "video", length = 255)
 	private String video;
 
-	@Column(name = "image", length = 255)
-	private String image;
+	@Column(name = "audio", length = 255)
+	private String audio;
 
 	@Column(name = "view_count", columnDefinition = "int default 0")
 	private Integer viewCount = 0;
@@ -65,10 +68,18 @@ public class Post {
 	@Column(name = "is_deleted", columnDefinition = "boolean default false")
 	private Boolean isDeleted = false;
 
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "audio_post_id")
+	private Post ownerAudioPostId;
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "type", nullable = false)
+	private PostType type;
+
 	@OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
 	private List<PostStory> postStories;
-	
+
 	@OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
 	private List<Image> images;
@@ -84,6 +95,10 @@ public class Post {
 	@OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
 	private List<PostTag> postTags;
+
+	@OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+	@JsonManagedReference
+	private List<View> views;
 
 	@PrePersist
 	protected void onCreate() {
@@ -105,4 +120,10 @@ public class Post {
 	public void restore() {
 		this.isDeleted = false;
 	}
+
+	public enum PostType {
+		IMAGE, // Dành cho bài đăng là ảnh
+		VIDEO, // Dành cho bài đăng là video
+	}
+
 }

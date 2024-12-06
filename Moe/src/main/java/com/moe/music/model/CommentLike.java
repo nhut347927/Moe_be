@@ -25,24 +25,24 @@ import lombok.NoArgsConstructor;
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "Likes")
-public class Like {
+@Table(name = "comment_likes")
+public class CommentLike {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer likeId;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "post_id", nullable = false)
+	@JoinColumn(name = "comment_id", nullable = false)
 	@JsonBackReference
-	private Post post;
+	private Comment comment;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "user_id", nullable = false)
 	@JsonBackReference
 	private User user;
 
-	@Column(name = "created_at", updatable = false)
+	@Column(name = "created_at", nullable = false, updatable = false)
 	private LocalDateTime createdAt;
 
 	@PrePersist
