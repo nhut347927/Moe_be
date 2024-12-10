@@ -21,7 +21,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "post_tag")
+@Table(name = "PostTags")
 public class PostTag {
 
 	@Id

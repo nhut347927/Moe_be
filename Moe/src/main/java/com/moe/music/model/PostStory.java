@@ -25,7 +25,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "Post_Story")
+@Table(name = "PostStories")
 public class PostStory {
 
 	@Id

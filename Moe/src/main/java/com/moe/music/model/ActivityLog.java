@@ -33,7 +33,7 @@ public class ActivityLog {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "log_id")
-	private int logId;
+	private Integer logId;
 
 	@Column(name = "action", nullable = false)
 	private String action;

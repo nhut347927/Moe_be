@@ -3,23 +3,30 @@ package com.moe.music.service;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 
 import com.moe.music.exception.AppException;
 import com.moe.music.jpa.UserJPA;
+import com.moe.music.model.RolePermission;
 import com.moe.music.model.User;
+import com.moe.music.utility.AuthorityUtil;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
@@ -33,7 +40,10 @@ public class TokenService {
 	private final UserJPA userJPA;
 
 	@Value("${app.expiration}")
-	private int jwtExpirationMs;
+	private Long jwtExpirationMs;
+
+	@Value("${app.expiration2}")
+	private Long jwtExpirationMs2;
 
 	@Autowired
 	public TokenService(UserJPA userJPA, @Value("${app.jwtSecret}") String jwtSecret) {
@@ -62,10 +72,9 @@ public class TokenService {
 	 * @return Chuỗi JWT Token
 	 */
 	public String generateJwtToken(User user) {
-		Set<String> permissions = user.getRole().getRolePermission().stream()
-				.map(rolePermission -> rolePermission.getPermission().getActionName()).collect(Collectors.toSet());
 
-		return Jwts.builder().setSubject(user.getEmail()).claim("permissions", permissions).setIssuedAt(new Date())
+		return Jwts.builder().setSubject(user.getEmail())
+				.claim("roles", AuthorityUtil.convertToAuthorities(user.getRolePermissions())).setIssuedAt(new Date())
 				.setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
 				.signWith(key, SignatureAlgorithm.HS256).compact();
 	}
@@ -82,7 +91,6 @@ public class TokenService {
 
 			Date expirationDate = claims.getExpiration();
 
-			// Kiểm tra token có hết hạn không
 			return expirationDate.after(new Date());
 		} catch (ExpiredJwtException e) {
 			// Token hết hạn
@@ -100,17 +108,18 @@ public class TokenService {
 	 * @return Tên người dùng từ token hoặc null nếu token không hợp lệ
 	 */
 	public String getEmailFromJwtToken(String token) {
-	    try {
-	        // Trích xuất email từ token bình thường nếu token hợp lệ
-	        return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody().getSubject();
-	    } catch (ExpiredJwtException e) {
-	        // Token đã hết hạn, nhưng vẫn có thể lấy email từ claims
-	        return e.getClaims().getSubject();
-	    } catch (Exception e) {
-	        throw new AppException("Error parsing JWT token: " + e.getMessage(), HttpStatus.UNAUTHORIZED.value());
-	    }
-	}
+		try {
+			return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody().getSubject();
+		} catch (ExpiredJwtException e) {
+			throw new AppException("Expired JWT token !", HttpStatus.UNAUTHORIZED.value());
+		} catch (JwtException e) {
+			throw new AppException("Invalid JWT token: " + e.getMessage(), HttpStatus.UNAUTHORIZED.value());
+		} catch (Exception e) {
 
+			throw new AppException("Unexpected error while parsing JWT token: " + e.getMessage(),
+					HttpStatus.INTERNAL_SERVER_ERROR.value());
+		}
+	}
 
 	/**
 	 * Lấy thời gian hết hạn từ JWT token.
@@ -147,9 +156,11 @@ public class TokenService {
 	 */
 	public String generateRefreshToken(User user) {
 		try {
+
 			String refreshToken = UUID.randomUUID().toString();
 			user.setRefreshToken(refreshToken);
-			user.setRefreshTokenExpires(LocalDateTime.now().plusDays(30)); // Thời hạn 90 ngày
+			user.setRefreshTokenExpires(LocalDateTime.ofInstant(
+					new Date(System.currentTimeMillis() + jwtExpirationMs2).toInstant(), ZoneId.systemDefault()));
 			userJPA.save(user);
 			return refreshToken;
 		} catch (Exception e) {

@@ -1,4 +1,6 @@
-package com.moe.music.dtoauth;
+package com.moe.music.authdto;
+
+import java.util.Set;
 
 import com.moe.music.model.User.Gender;
 
@@ -16,5 +18,5 @@ public class UserRegisterResponseDTO {
 	private String profilePictureUrl;
 	private String bio;
 	private Gender gender;
-	private String roles;
+	private Set<String> roles;
 }

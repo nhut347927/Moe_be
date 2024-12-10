@@ -2,33 +2,30 @@ package com.moe.music.model;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
+import org.hibernate.mapping.Set;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.moe.music.utility.AuthorityUtil;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -107,12 +104,6 @@ public class User implements UserDetails {
 	@Column(name = "password_reset_expires")
 	private LocalDateTime passwordResetExpires;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "roleId", nullable = false)
-	@NotNull(message = "Role ID cannot be null")
-	@JsonBackReference
-	private Role role;
-
 	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
 	private List<Post> posts;
@@ -173,6 +164,10 @@ public class User implements UserDetails {
 	@JsonManagedReference
 	private List<CommentLike> commentLikes;
 
+	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+	@JsonManagedReference
+	private List<RolePermission> rolePermissions;
+
 	public void softDelete() {
 		this.deletedAt = LocalDateTime.now();
 		this.isDeleted = true;
@@ -197,9 +192,10 @@ public class User implements UserDetails {
 	// Implementations for UserDetails interface
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
-		return role != null && role.getRolePermission() != null ? role.getRolePermission().stream()
-				.map(rolePermission -> new SimpleGrantedAuthority(rolePermission.getPermission().getActionName()))
-				.collect(Collectors.toList()) : List.of();
+
+		java.util.Set<String> authoritySet = AuthorityUtil.convertToAuthorities(rolePermissions);
+
+		return authoritySet.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList());
 	}
 
 	@Override

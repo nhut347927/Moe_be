@@ -1,4 +1,4 @@
-package com.moe.music.dtoauth;
+package com.moe.music.authdto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;

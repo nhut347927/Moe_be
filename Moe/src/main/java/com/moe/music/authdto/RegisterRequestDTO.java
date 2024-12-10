@@ -1,6 +1,5 @@
-package com.moe.music.dtoauth;
+package com.moe.music.authdto;
 
-import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;

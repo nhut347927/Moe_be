@@ -2,25 +2,31 @@ package com.moe.music.service;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import com.moe.music.dtoauth.LoginRequestDTO;
-import com.moe.music.dtoauth.LoginResponseDTO;
-import com.moe.music.dtoauth.RegisterRequestDTO;
-import com.moe.music.dtoauth.UserRegisterResponseDTO;
+import com.moe.music.authdto.LoginRequestDTO;
+import com.moe.music.authdto.LoginResponseDTO;
+import com.moe.music.authdto.RegisterRequestDTO;
+import com.moe.music.authdto.UserRegisterResponseDTO;
 import com.moe.music.exception.AppException;
 import com.moe.music.jpa.RoleJPA;
 import com.moe.music.jpa.UserJPA;
 import com.moe.music.model.Role;
 import com.moe.music.model.User;
 import com.moe.music.model.User.Gender;
+import com.moe.music.utility.AuthorityUtil;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -47,12 +53,13 @@ public class UserService {
 			throw new AppException("Email already exists", HttpStatus.CONFLICT.value());
 		}
 
-		if (request.getPassword().equals(request.getConfirmPassword())) {
-			throw new AppException("Password and confirm password must match!", 400);
+		if (userJpa.findByDisplayName(request.getEmail().trim().toLowerCase()).isPresent()) {
+			throw new AppException("Display Name already exists", HttpStatus.CONFLICT.value());
 		}
 
-		Role role = roleJPA.findById(2) // 2 ~ ROLE USER
-				.orElseThrow(() -> new AppException("Role not found", HttpStatus.NOT_FOUND.value()));
+		if (!request.getPassword().equals(request.getConfirmPassword())) {
+			throw new AppException("Password and confirm password must match!", 400);
+		}
 
 		User user = new User();
 		user.setEmail(request.getEmail().trim().toLowerCase());
@@ -60,7 +67,6 @@ public class UserService {
 		user.setDisplayName(request.getDisplayName().trim());
 		user.setBio(request.getBio() != null ? request.getBio().trim() : "");
 		user.setProfilePictureUrl(request.getProfilePictureUrl() != null ? request.getProfilePictureUrl().trim() : "");
-		user.setRole(role);
 
 		String genderString = request.getGender() != null ? request.getGender().trim() : "";
 		try {
@@ -73,13 +79,15 @@ public class UserService {
 
 			User savedUser = userJpa.save(user);
 
+		
+
 			UserRegisterResponseDTO userInfo = new UserRegisterResponseDTO();
 			userInfo.setUserId(savedUser.getUserId());
 			userInfo.setEmail(savedUser.getEmail());
 			userInfo.setDisplayName(savedUser.getDisplayName());
 			userInfo.setBio(savedUser.getBio());
 			userInfo.setGender(savedUser.getGender());
-			userInfo.setRoles(role.getRoleName());
+			userInfo.setRoles(AuthorityUtil.convertToAuthorities(savedUser.getRolePermissions()));
 
 			return userInfo;
 
@@ -122,11 +130,12 @@ public class UserService {
 			long expiresInHoursRe = expiresInSecondsRe / 3600;
 			responseDTO.setRefreshTokenExpiresIn(expiresInHoursRe + " Giờ");
 
+			
 			UserRegisterResponseDTO userInfo = new UserRegisterResponseDTO();
 			userInfo.setUserId(user.get().getUserId());
 			userInfo.setEmail(user.get().getEmail());
 			userInfo.setDisplayName(user.get().getDisplayName());
-			userInfo.setRoles(user.get().getRole().getRoleName());
+			userInfo.setRoles(AuthorityUtil.convertToAuthorities(user.get().getRolePermissions()));
 			userInfo.setBio(user.get().getBio());
 			userInfo.setGender(user.get().getGender());
 			userInfo.setProfilePictureUrl(user.get().getProfilePictureUrl());
@@ -157,20 +166,10 @@ public class UserService {
 		}
 	}
 
-	public boolean validateOldPassword(User user, String oldPassword) {
-
-		User existingUser = userJpa.findById(user.getUserId())
-				.orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND.value()));
-
-		if (oldPassword == null || oldPassword.trim().isEmpty()) {
-			throw new AppException("Old password cannot be empty", HttpStatus.BAD_REQUEST.value());
+	public boolean validateNewPassword(String newPassword, String confirmNewPassword) {
+		if (!newPassword.equals(confirmNewPassword)) {
+			throw new AppException("New password and confirm new password must match !", 400);
 		}
-
-		boolean isMatch = passwordEncoder.matches(oldPassword, existingUser.getPasswordHash());
-		if (!isMatch) {
-			throw new AppException("Old password is incorrect", HttpStatus.UNAUTHORIZED.value());
-		}
-
 		return true;
 	}
 
@@ -189,14 +188,6 @@ public class UserService {
 	}
 
 	public void updatePassword(User user, String newPassword) {
-		if (user == null) {
-			throw new IllegalArgumentException("User cannot be null");
-		}
-
-		if (newPassword == null || newPassword.isEmpty()) {
-			throw new IllegalArgumentException("New password cannot be null or empty");
-		}
-
 		user.setPasswordHash(passwordEncoder.encode(newPassword));
 		user.setPasswordResetToken(null);
 		user.setPasswordResetExpires(null);
@@ -204,16 +195,10 @@ public class UserService {
 	}
 
 	public void save(User user) {
-		if (user == null) {
-			throw new IllegalArgumentException("User cannot be null");
-		}
 		userJpa.save(user);
 	}
 
 	public void logOut(User user) {
-		if (user == null) {
-			throw new IllegalArgumentException("User cannot be null");
-		}
 		tokenService.clearTokens(user);
 	}
 }

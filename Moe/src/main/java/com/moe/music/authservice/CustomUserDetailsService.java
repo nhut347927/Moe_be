@@ -1,4 +1,4 @@
-package com.moe.music.service;
+package com.moe.music.authservice;
 
 import java.util.Optional;
 
@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.moe.music.exception.AppException;
 import com.moe.music.jpa.UserJPA;
 import com.moe.music.model.User;
+import com.moe.music.utility.AuthorityUtil;
 
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
@@ -43,8 +44,8 @@ public class CustomUserDetailsService implements UserDetailsService {
 
 		try {
 			User foundUser = user.get();
-			if (foundUser.getRole() != null && foundUser.getRole().getRolePermission() != null) {
-				Hibernate.initialize(foundUser.getRole().getRolePermission());
+			if (foundUser.getRolePermissions() != null) {
+				Hibernate.initialize(AuthorityUtil.convertToAuthorities(foundUser.getRolePermissions()));
 			} else {
 				throw new AppException(
 						"Warning: User has no assigned role or permissions. Assigning default permissions if needed.",

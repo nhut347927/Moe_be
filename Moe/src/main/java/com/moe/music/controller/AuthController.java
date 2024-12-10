@@ -1,8 +1,7 @@
 package com.moe.music.controller;
 
-import java.time.Duration;
-
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -14,13 +13,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.moe.music.dtoauth.ChangePasswordRequestDTO;
-import com.moe.music.dtoauth.LoginRequestDTO;
-import com.moe.music.dtoauth.LoginResponseDTO;
-import com.moe.music.dtoauth.RegisterRequestDTO;
-import com.moe.music.dtoauth.RequestPasswordResetRequestDTO;
-import com.moe.music.dtoauth.ResetPasswordRequestDTO;
-import com.moe.music.dtoauth.UserRegisterResponseDTO;
+import com.moe.music.authdto.ChangePasswordRequestDTO;
+import com.moe.music.authdto.LoginRequestDTO;
+import com.moe.music.authdto.LoginResponseDTO;
+import com.moe.music.authdto.RegisterRequestDTO;
+import com.moe.music.authdto.RequestPasswordResetRequestDTO;
+import com.moe.music.authdto.ResetPasswordRequestDTO;
+import com.moe.music.authdto.UserRegisterResponseDTO;
 import com.moe.music.exception.AppException;
 import com.moe.music.model.User;
 import com.moe.music.response.ResponseAPI;
@@ -44,6 +43,11 @@ public class AuthController {
 
 	@Autowired
 	private EmailService emailService;
+	@Value("${app.expiration}")
+	private Long jwtExpirationMs;
+
+	@Value("${app.expiration2}")
+	private Long jwtExpirationMs2;
 
 	@PostMapping("/register")
 	public ResponseEntity<ResponseAPI<UserRegisterResponseDTO>> register(
@@ -72,17 +76,24 @@ public class AuthController {
 	public ResponseEntity<ResponseAPI<LoginResponseDTO>> login(@RequestBody @Valid LoginRequestDTO request) {
 		ResponseAPI<LoginResponseDTO> response = new ResponseAPI<>();
 		try {
-
 			LoginResponseDTO login = userService.login(request);
 
+			int maxAgeAccessToken = (int) (jwtExpirationMs / 1000);
+			int maxAgeRefreshToken = (int) (jwtExpirationMs2 / 1000);
+
 			ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", login.getRefreshToken()).httpOnly(true)
-					.secure(true).path("/").sameSite("Strict").maxAge(Duration.ofDays(30)).build();
+					.secure(true).path("/").sameSite("Strict").maxAge(maxAgeRefreshToken).build();
+
+			ResponseCookie accessCookie = ResponseCookie.from("access_token", login.getAccessToken()).httpOnly(true)
+					.secure(true).path("/").sameSite("Strict").maxAge(maxAgeAccessToken).build();
 
 			response.setCode(200);
-			response.setMessage("Login successful !");
+			response.setMessage("Login successful!");
 			response.setData(login);
 
-			return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, refreshCookie.toString()).body(response);
+			return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+					.header(HttpHeaders.SET_COOKIE, accessCookie.toString()).body(response);
+
 		} catch (AppException e) {
 			response.setCode(e.getStatusCode());
 			response.setMessage(e.getMessage());
@@ -97,34 +108,36 @@ public class AuthController {
 	}
 
 	@PutMapping("/change-password")
-	public ResponseEntity<ResponseAPI<Void>> changePassword(@AuthenticationPrincipal User user,
+	public ResponseEntity<ResponseAPI<String>> changePassword(@AuthenticationPrincipal User user,
 			@RequestBody @Valid ChangePasswordRequestDTO request) {
-		ResponseAPI<Void> response = new ResponseAPI<>();
-		try {
+		ResponseAPI<String> response = new ResponseAPI<>();
 
+		try {
 			if (user == null) {
 				response.setCode(HttpStatus.UNAUTHORIZED.value());
-				response.setMessage("User is not authenticated !");
+				response.setMessage("User is not authenticated!");
+				response.setData(null);
 				return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
 			}
 
-			if ( !userService.validateOldPassword(user, request.getOldPassword())) {
-				response.setCode(HttpStatus.BAD_REQUEST.value());
-				response.setMessage("Old password is incorrect !");
-				return ResponseEntity.badRequest().body(response);
-			}
+			userService.validateNewPassword(request.getNewPassword(), request.getConfirmNewPassword());
 
 			userService.changePassword(user, request.getNewPassword());
+
 			response.setCode(HttpStatus.OK.value());
-			response.setMessage("Password changed successfully !");
-			return ResponseEntity.ok(response);
+			response.setMessage("Password changed successfully!");
+			response.setData("Password has been updated for user: " + user.getUsername());
+
+			return ResponseEntity.status(HttpStatus.OK).body(response);
 		} catch (AppException e) {
 			response.setCode(e.getStatusCode());
 			response.setMessage(e.getMessage());
+			response.setData(null);
 			return ResponseEntity.status(e.getStatusCode()).body(response);
 		} catch (Exception e) {
 			response.setCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			response.setMessage("An error occurred: " + e.getMessage());
+			response.setData(null);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
@@ -142,7 +155,7 @@ public class AuthController {
 			emailService.sendPasswordResetEmail(user.getEmail(), resetToken);
 
 			response.setCode(HttpStatus.OK.value());
-			response.setMessage("Password reset email sent successfully !");
+			response.setMessage("The password reset email has been sent successfully. Please check your email! !");
 			response.setData("Success");
 			return ResponseEntity.ok(response);
 
@@ -168,16 +181,11 @@ public class AuthController {
 			String token = request.getToken();
 			String newPassword = request.getNewPassword();
 
-			if (newPassword == null || newPassword.isEmpty()) {
-				response.setCode(HttpStatus.BAD_REQUEST.value());
-				response.setMessage("New password cannot be null or empty !");
-				response.setData(null);
-				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-			}
+			userService.validateNewPassword(request.getNewPassword(), request.getConfirmNewPassword());
 
 			User user = userService.findByResetToken(token);
 
-			if ( !tokenService.validatePasswordResetToken(user, token)) {
+			if (!tokenService.validatePasswordResetToken(user, token)) {
 				response.setCode(HttpStatus.UNAUTHORIZED.value());
 				response.setMessage("Invalid or expired token !");
 				response.setData(null);
@@ -194,17 +202,11 @@ public class AuthController {
 			response.setData("Success");
 			return ResponseEntity.ok(response);
 
-		} catch (IllegalArgumentException ex) {
+		} catch (AppException ex) {
 			response.setCode(HttpStatus.BAD_REQUEST.value());
 			response.setMessage(ex.getMessage());
 			response.setData(null);
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-
-		} catch (EntityNotFoundException ex) {
-			response.setCode(HttpStatus.NOT_FOUND.value());
-			response.setMessage(ex.getMessage());
-			response.setData(null);
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 
 		} catch (Exception ex) {
 			response.setCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
@@ -221,7 +223,7 @@ public class AuthController {
 
 			String refreshToken = tokenService.extractTokenFromCookie(request);
 
-			if (refreshToken == null ||  !tokenService.validateRefreshToken(refreshToken)) {
+			if (refreshToken == null || !tokenService.validateRefreshToken(refreshToken)) {
 				response.setCode(HttpStatus.UNAUTHORIZED.value());
 				response.setMessage("Invalid or expired refresh token !");
 				response.setData(null);

@@ -1,4 +1,4 @@
-package com.moe.music.security;
+package com.moe.music.authservice;
 
 import java.io.IOException;
 import java.util.List;
@@ -16,7 +16,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moe.music.exception.AppException;
 import com.moe.music.response.ResponseAPI;
-import com.moe.music.service.CustomUserDetailsService;
 import com.moe.music.service.TokenService;
 import com.moe.music.utility.JwtUtil;
 
@@ -48,39 +47,39 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 
 		if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
 			jwt = authorizationHeader.substring(7);
+
 			try {
 				email = tokenService.getEmailFromJwtToken(jwt);
 			} catch (ExpiredJwtException e) {
-				sendErrorResponse(response, "JWT token has expired. Please login again.",
-						HttpServletResponse.SC_UNAUTHORIZED);
+				sendErrorResponse(response, e.getMessage(), 999);
 				return;
 			} catch (AppException e) {
-				sendErrorResponse(response, "Invalid or missing token. Please provide a valid token.",
-						HttpServletResponse.SC_UNAUTHORIZED);
+				sendErrorResponse(response, e.getMessage(), 999);
 				return;
 			}
-		}
 
-		if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-			UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+			if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+				UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-			try {
-				if (tokenService.validateJwtToken(jwt)) {
-					List<SimpleGrantedAuthority> authorities = jwtUtil.extractPermissions(jwt).stream()
-							.map(SimpleGrantedAuthority::new).collect(Collectors.toList());
+				try {
+					if (tokenService.validateJwtToken(jwt)) {
 
-					UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
-							userDetails, null, authorities);
-					usernamePasswordAuthenticationToken
-							.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-					SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
-				} else {
-					sendErrorResponse(response, "Token is invalid", HttpServletResponse.SC_UNAUTHORIZED);
+						List<SimpleGrantedAuthority> authorities = jwtUtil.extractPermissions(jwt).stream()
+								.map(SimpleGrantedAuthority::new).collect(Collectors.toList());
+
+						UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+								userDetails, null, authorities);
+						authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+						SecurityContextHolder.getContext().setAuthentication(authentication);
+
+					} else {
+						sendErrorResponse(response, "Invalid token. Please provide a valid token.", 999);
+						return;
+					}
+				} catch (AppException e) {
+					sendErrorResponse(response, e.getMessage(), 999);
 					return;
 				}
-			} catch (AppException e) {
-				sendErrorResponse(response, "Token is invalid", HttpServletResponse.SC_UNAUTHORIZED);
-				return;
 			}
 		}
 

@@ -38,10 +38,6 @@ public class Role {
 
 	@OneToMany(mappedBy = "role", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
-	private List<RolePermission> rolePermission;
-
-	@OneToMany(mappedBy = "role", cascade = CascadeType.ALL, orphanRemoval = true)
-	@JsonManagedReference
-	private List<User> users;
+	private List<RolePermission> rolePermissions;
 
 }

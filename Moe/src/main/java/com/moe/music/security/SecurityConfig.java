@@ -10,6 +10,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import com.moe.music.authservice.JwtRequestFilter;
+
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -28,7 +30,8 @@ public class SecurityConfig {
 				.authorizeHttpRequests(authz -> authz
 						.requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/request-password-reset",
 								"/api/auth/reset-password")
-						.permitAll().requestMatchers("/api/auth/change-password").hasAuthority("VIEW")
+						.permitAll()
+					//	.requestMatchers("/api/auth/change-password").hasAuthority("USER_MN_VIEW")
 						.anyRequest().authenticated())
 				.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 		return http.build();

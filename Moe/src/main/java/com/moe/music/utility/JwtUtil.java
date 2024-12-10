@@ -2,6 +2,7 @@ package com.moe.music.utility;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -32,7 +33,10 @@ public class JwtUtil {
 
 	public List<String> extractPermissions(String token) {
 		Claims claims = tokenService.extractAllClaims(token);
-		return claims.get("permissions", List.class);
+		List<?> rawRoles = claims.get("roles", List.class);
+
+		return rawRoles.stream().filter(role -> role instanceof String).map(Object::toString)
+				.collect(Collectors.toList());
 	}
 
 }

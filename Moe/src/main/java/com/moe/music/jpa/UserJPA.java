@@ -11,6 +11,9 @@ import com.moe.music.model.User;
 public interface UserJPA extends JpaRepository<User, Integer> {
 	@Query("SELECT u FROM User u WHERE u.email = :email")
 	Optional<User> findByEmail(@Param("email") String email);
+	
+	@Query("SELECT u FROM User u WHERE u.displayName = :displayName")
+	Optional<User> findByDisplayName(@Param("displayName") String DisplayName);
 
 	@Query("SELECT u FROM User u WHERE u.passwordResetToken = :passwordResetToken")
 	Optional<User> findByPasswordResetToken(@Param("passwordResetToken") String passwordResetToken);
