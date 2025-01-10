@@ -23,12 +23,10 @@ import jakarta.servlet.http.HttpServletResponse;
 public class JwtUtil {
 
 	private final TokenService tokenService;
-	private final UserJPA userJPA;
 
 	@Autowired
 	public JwtUtil(TokenService tokenService, UserJPA userJPA) {
 		this.tokenService = tokenService;
-		this.userJPA = userJPA;
 	}
 
 	public List<String> extractPermissions(String token) {

@@ -38,9 +38,6 @@ public class UserService {
 	private UserJPA userJpa;
 
 	@Autowired
-	private RoleJPA roleJPA;
-
-	@Autowired
 	private PasswordEncoder passwordEncoder;
 
 	@Autowired
@@ -79,10 +76,8 @@ public class UserService {
 
 			User savedUser = userJpa.save(user);
 
-		
-
 			UserRegisterResponseDTO userInfo = new UserRegisterResponseDTO();
-			userInfo.setUserId(savedUser.getUserId());
+			userInfo.setUserId(savedUser.getId());
 			userInfo.setEmail(savedUser.getEmail());
 			userInfo.setDisplayName(savedUser.getDisplayName());
 			userInfo.setBio(savedUser.getBio());
@@ -130,9 +125,8 @@ public class UserService {
 			long expiresInHoursRe = expiresInSecondsRe / 3600;
 			responseDTO.setRefreshTokenExpiresIn(expiresInHoursRe + " Giờ");
 
-			
 			UserRegisterResponseDTO userInfo = new UserRegisterResponseDTO();
-			userInfo.setUserId(user.get().getUserId());
+			userInfo.setUserId(user.get().getId());
 			userInfo.setEmail(user.get().getEmail());
 			userInfo.setDisplayName(user.get().getDisplayName());
 			userInfo.setRoles(AuthorityUtil.convertToAuthorities(user.get().getRolePermissions()));

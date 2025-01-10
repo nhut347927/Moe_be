@@ -221,7 +221,7 @@ public class AuthController {
 		ResponseAPI<String> response = new ResponseAPI<>();
 		try {
 
-			String refreshToken = tokenService.extractTokenFromCookie(request);
+			String refreshToken = tokenService.extractRefreshTokenFromCookie(request);
 
 			if (refreshToken == null || !tokenService.validateRefreshToken(refreshToken)) {
 				response.setCode(HttpStatus.UNAUTHORIZED.value());
@@ -262,14 +262,14 @@ public class AuthController {
 
 			userService.logOut(user);
 
-			ResponseCookie deleteCookie = ResponseCookie.from("refresh_token", "").httpOnly(true).secure(true).path("/")
-					.sameSite("Strict").maxAge(0).build();
+			ResponseCookie deleteCookieReftoken = ResponseCookie.from("refresh_token", "").httpOnly(true).secure(true)
+					.path("/").sameSite("Strict").maxAge(0).build();
 
 			response.setCode(HttpStatus.OK.value());
 			response.setMessage("Logged out successfully !");
 			response.setData("Success");
 
-			return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, deleteCookie.toString()).body(response);
+			return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, deleteCookieReftoken.toString()).body(response);
 
 		} catch (AppException e) {
 

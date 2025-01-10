@@ -40,46 +40,48 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
 			throws ServletException, IOException {
-		final String authorizationHeader = request.getHeader("Authorization");
-
-		String email = null;
 		String jwt = null;
+		String email = null;
 
+		// Extract access token from Authorization header
+		final String authorizationHeader = request.getHeader("Authorization");
 		if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
 			jwt = authorizationHeader.substring(7);
-
 			try {
 				email = tokenService.getEmailFromJwtToken(jwt);
 			} catch (ExpiredJwtException e) {
-				sendErrorResponse(response, e.getMessage(), 999);
-				return;
+				// Access token expired - check email in cookies
+				String refreshToken = tokenService.extractRefreshTokenFromCookie(request);
+				if (tokenService.validateRefreshToken(refreshToken)) {
+					email = tokenService.getUserFromRefreshToken(refreshToken).getEmail();
+				}
 			} catch (AppException e) {
-				sendErrorResponse(response, e.getMessage(), 999);
+				sendErrorResponse(response, e.getMessage(), 401);
 				return;
 			}
+		}
 
-			if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-				UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+		// Validate email and set it into SecurityContext
+		if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+			UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-				try {
-					if (tokenService.validateJwtToken(jwt)) {
+			try {
+				if (jwt == null || tokenService.validateJwtToken(jwt)) {
+					List<SimpleGrantedAuthority> authorities = jwtUtil.extractPermissions(jwt).stream()
+							.map(SimpleGrantedAuthority::new).collect(Collectors.toList());
 
-						List<SimpleGrantedAuthority> authorities = jwtUtil.extractPermissions(jwt).stream()
-								.map(SimpleGrantedAuthority::new).collect(Collectors.toList());
+					UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+							userDetails, null, authorities);
+					authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+					SecurityContextHolder.getContext().setAuthentication(authentication);
 
-						UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-								userDetails, null, authorities);
-						authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-						SecurityContextHolder.getContext().setAuthentication(authentication);
-
-					} else {
-						sendErrorResponse(response, "Invalid token. Please provide a valid token.", 999);
-						return;
-					}
-				} catch (AppException e) {
-					sendErrorResponse(response, e.getMessage(), 999);
+				} else {
+					sendErrorResponse(response, "Invalid token. Please provide a valid token.", 401);
 					return;
 				}
+			} catch (AppException e) {
+				sendErrorResponse(response, e.getMessage(), 401);
+				return;
 			}
 		}
 

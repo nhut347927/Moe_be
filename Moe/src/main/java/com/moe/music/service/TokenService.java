@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import com.moe.music.exception.AppException;
@@ -37,10 +38,11 @@ import jakarta.servlet.http.HttpServletRequest;
 public class TokenService {
 
 	private final Key key;
+	
 	private final UserJPA userJPA;
 
-	@Value("${app.expiration}")
-	private Long jwtExpirationMs;
+//	@Value("${app.expiration}")
+//	private Long jwtExpirationMs;
 
 	@Value("${app.expiration2}")
 	private Long jwtExpirationMs2;
@@ -75,8 +77,16 @@ public class TokenService {
 
 		return Jwts.builder().setSubject(user.getEmail())
 				.claim("roles", AuthorityUtil.convertToAuthorities(user.getRolePermissions())).setIssuedAt(new Date())
-				.setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
+				.setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs2))
 				.signWith(key, SignatureAlgorithm.HS256).compact();
+	}
+
+	public String generateAccessTokenFromRefreshToken(String refreshToken) {
+	    User user = this.getUserFromRefreshToken(refreshToken);
+	    if (user == null) {
+	        throw new UsernameNotFoundException("User not found for the given refresh token.");
+	    }
+	    return this.generateJwtToken(user);
 	}
 
 	/**
@@ -205,7 +215,7 @@ public class TokenService {
 	 * @param request Yêu cầu HTTP
 	 * @return Refresh Token nếu tồn tại, ngược lại null
 	 */
-	public String extractTokenFromCookie(HttpServletRequest request) {
+	public String extractRefreshTokenFromCookie(HttpServletRequest request) {
 		if (request.getCookies() != null) {
 			for (Cookie cookie : request.getCookies()) {
 				if ("refresh_token".equals(cookie.getName())) {
@@ -216,6 +226,22 @@ public class TokenService {
 		return null;
 	}
 
+	/**
+	 * Trích xuất Access Token từ cookie trong yêu cầu HTTP.
+	 *
+	 * @param request Yêu cầu HTTP
+	 * @return Access Token nếu tồn tại, ngược lại null
+	 */
+	public String extractAccessTokenFromCookie(HttpServletRequest request) {
+		if (request.getCookies() != null) {
+			for (Cookie cookie : request.getCookies()) {
+				if ("access_token".equals(cookie.getName())) {
+					return cookie.getValue();
+				}
+			}
+		}
+		return null;
+	}
 	/**
 	 * Lấy đối tượng người dùng từ Refresh Token.
 	 *

@@ -2,10 +2,9 @@ package com.moe.music.model;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
-import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 
-import org.hibernate.mapping.Set;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -44,7 +43,7 @@ public class User implements UserDetails {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Integer userId;
+	private Long id;
 
 	@Column(nullable = false, unique = true, length = 100)
 	private String email;

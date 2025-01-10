@@ -31,7 +31,7 @@ public class SecurityConfig {
 						.requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/request-password-reset",
 								"/api/auth/reset-password")
 						.permitAll()
-					//	.requestMatchers("/api/auth/change-password").hasAuthority("USER_MN_VIEW")
+					.requestMatchers("/api/auth/change-password").hasAuthority("ADMIN_INSERT")
 						.anyRequest().authenticated())
 				.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 		return http.build();

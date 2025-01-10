@@ -24,37 +24,37 @@ public class PostService {
 	@Value("${max.posts}")
 	private int maxPosts;
 
-	public List<Post> getHotPosts(Integer userId) {
+	public List<Post> getHotPosts(Long userId) {
 		Pageable pageable = PageRequest.of(0, 3);
 		return postJPA.findHotPosts(userId, pageable);
 	}
 
-	public List<Post> getPersonalizedPosts(Integer userId) {
+	public List<Post> getPersonalizedPosts(Long userId) {
 		Pageable pageable = PageRequest.of(0, 9);
 		return postJPA.findPersonalizedPosts(userId, pageable);
 	}
 
-	public List<Post> getExplorationPosts(Integer userId) {
+	public List<Post> getExplorationPosts(Long userId) {
 		Pageable pageable = PageRequest.of(0, 3);
 		return postJPA.findExplorationPosts(userId, pageable);
 	}
 
-	public List<Post> getRandomPosts(Integer userId) {
+	public List<Post> getRandomPosts(Long userId) {
 		Pageable pageable = PageRequest.of(0, 3);
 		return postJPA.findUnseenAndUnlikedPostsRandomly(userId, pageable);
 	}
 
-	public List<Post> getPostsFromFollowedUsers(Integer userId) {
+	public List<Post> getPostsFromFollowedUsers(Long userId) {
 		Pageable pageable = PageRequest.of(0, 6);
 		return postJPA.findPostsFromFollowedUsers(userId, pageable);
 	}
 
-	public List<Post> getUnseenOrUnlikedPosts(Integer userId) {
+	public List<Post> getUnseenOrUnlikedPosts(Long userId) {
 		Pageable pageable = PageRequest.of(0, 6);
 		return postJPA.findUnseenOrUnlikedPosts(userId, pageable);
 	}
 
-	public List<Post> getPost(Integer userId) {
+	public List<Post> getPost(Long userId) {
 		// Bước 1: Lấy các bài theo cơ chế ban đầu
 		List<Post> hotPosts = getHotPosts(userId);
 		List<Post> personalizedPosts = getPersonalizedPosts(userId);

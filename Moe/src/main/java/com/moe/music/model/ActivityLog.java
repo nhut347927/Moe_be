@@ -32,8 +32,8 @@ public class ActivityLog {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Column(name = "log_id")
-	private Integer logId;
+	@Column(name = "id")
+	private Long id;
 
 	@Column(name = "action", nullable = false)
 	private String action;

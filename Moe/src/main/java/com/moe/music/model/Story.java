@@ -34,7 +34,7 @@ public class Story {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Integer storyId;
+	private Long id;
 
 	@Column(nullable = false, length = 255)
 	private String name;
