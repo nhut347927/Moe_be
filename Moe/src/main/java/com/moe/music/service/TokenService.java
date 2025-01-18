@@ -233,14 +233,14 @@ public class TokenService {
 	 * @return Access Token nếu tồn tại, ngược lại null
 	 */
 	public String extractAccessTokenFromCookie(HttpServletRequest request) {
-		if (request.getCookies() != null) {
-			for (Cookie cookie : request.getCookies()) {
-				if ("access_token".equals(cookie.getName())) {
-					return cookie.getValue();
-				}
-			}
-		}
-		return null;
+	    if (request.getCookies() != null) {
+	        for (Cookie cookie : request.getCookies()) {
+	            if ("access_token".equals(cookie.getName())) {
+	                return cookie.getValue();
+	            }
+	        }
+	    }
+	    return null;
 	}
 	/**
 	 * Lấy đối tượng người dùng từ Refresh Token.

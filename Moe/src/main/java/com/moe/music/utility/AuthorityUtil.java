@@ -25,7 +25,6 @@ public class AuthorityUtil {
 
 			if (rolePermission == null || rolePermission.getRole() == null)
 				return Stream.empty();
-
 			String roleName = rolePermission.getRole().getRoleName();
 			if (roleName == null || roleName.isEmpty())
 				return Stream.empty();

@@ -43,6 +43,7 @@ public class AuthController {
 
 	@Autowired
 	private EmailService emailService;
+	
 	@Value("${app.expiration}")
 	private Long jwtExpirationMs;
 
@@ -74,38 +75,52 @@ public class AuthController {
 
 	@PostMapping("/login")
 	public ResponseEntity<ResponseAPI<LoginResponseDTO>> login(@RequestBody @Valid LoginRequestDTO request) {
-		ResponseAPI<LoginResponseDTO> response = new ResponseAPI<>();
-		try {
-			LoginResponseDTO login = userService.login(request);
+	    ResponseAPI<LoginResponseDTO> response = new ResponseAPI<>();
+	    try {
+	        LoginResponseDTO login = userService.login(request);
 
-			int maxAgeAccessToken = (int) (jwtExpirationMs / 1000);
-			int maxAgeRefreshToken = (int) (jwtExpirationMs2 / 1000);
+	        int maxAgeAccessToken = (int) (jwtExpirationMs / 1000);
+	        int maxAgeRefreshToken = (int) (jwtExpirationMs2 / 1000);
 
-			ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", login.getRefreshToken()).httpOnly(true)
-					.secure(true).path("/").sameSite("Strict").maxAge(maxAgeRefreshToken).build();
+	        // Set cookies with Secure set to true for HTTPS environment
+	        ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", login.getRefreshToken())
+	                .httpOnly(true)  // Sử dụng httpOnly để tăng bảo mật, không cho truy xuất từ JS
+	                .secure(false)    // Secure=true trong môi trường HTTPS
+	                .path("/")       // Đường dẫn cookie
+	                .maxAge(maxAgeRefreshToken) // Thời gian sống của cookie
+	                .sameSite("Lax")
+	                .build();
 
-			ResponseCookie accessCookie = ResponseCookie.from("access_token", login.getAccessToken()).httpOnly(true)
-					.secure(true).path("/").sameSite("Strict").maxAge(maxAgeAccessToken).build();
+	        ResponseCookie accessCookie = ResponseCookie.from("access_token", login.getAccessToken())
+	                .httpOnly(true)  // Sử dụng httpOnly để tăng bảo mật
+	                .secure(false)    // Secure=true trong môi trường HTTPS
+	                .path("/")       // Đường dẫn cookie
+	                .maxAge(maxAgeAccessToken) // Thời gian sống của cookie
+	                .sameSite("Lax")
+	                .build();
 
-			response.setCode(200);
-			response.setMessage("Login successful!");
-			response.setData(login);
+	        response.setCode(200);
+	        response.setMessage("Login successful!");
+	        response.setData(login);
 
-			return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-					.header(HttpHeaders.SET_COOKIE, accessCookie.toString()).body(response);
+	        return ResponseEntity.ok()
+	                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+	                .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+	                .body(response);
 
-		} catch (AppException e) {
-			response.setCode(e.getStatusCode());
-			response.setMessage(e.getMessage());
-			response.setData(null);
-			return ResponseEntity.status(e.getStatusCode()).body(response);
-		} catch (Exception e) {
-			response.setCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
-			response.setMessage("An error occurred: " + e.getMessage());
-			response.setData(null);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-		}
+	    } catch (AppException e) {
+	        response.setCode(e.getStatusCode());
+	        response.setMessage(e.getMessage());
+	        response.setData(null);
+	        return ResponseEntity.status(e.getStatusCode()).body(response);
+	    } catch (Exception e) {
+	        response.setCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+	        response.setMessage("An error occurred: " + e.getMessage());
+	        response.setData(null);
+	        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+	    }
 	}
+
 
 	@PutMapping("/change-password")
 	public ResponseEntity<ResponseAPI<String>> changePassword(@AuthenticationPrincipal User user,

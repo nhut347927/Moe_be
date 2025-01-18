@@ -16,24 +16,27 @@ import com.moe.music.authservice.JwtRequestFilter;
 @EnableWebSecurity
 public class SecurityConfig {
 
-	@Autowired
-	private JwtRequestFilter jwtRequestFilter;
+    @Autowired
+    private JwtRequestFilter jwtRequestFilter;
 
-	@Bean
-	PasswordEncoder passwordEncoder() {
-		return new BCryptPasswordEncoder();
-	}
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
-	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-		http.csrf().disable()
-				.authorizeHttpRequests(authz -> authz
-						.requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/request-password-reset",
-								"/api/auth/reset-password")
-						.permitAll()
-					.requestMatchers("/api/auth/change-password").hasAuthority("ADMIN_INSERT")
-						.anyRequest().authenticated())
-				.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
-		return http.build();
-	}
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http.csrf().disable()
+                .authorizeRequests(authz -> authz
+                        .requestMatchers("/api/auth/register").permitAll()
+                        .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/request-password-reset").permitAll()
+                        .requestMatchers("/api/auth/reset-password").permitAll()
+                        .requestMatchers("/api/auth/change-password").hasAuthority("ADMIN_INSERT")
+                        .anyRequest().authenticated())
+                .cors().and()
+                .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+        return http.build();
+    }
 }
+
