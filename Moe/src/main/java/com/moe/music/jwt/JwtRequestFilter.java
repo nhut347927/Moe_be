@@ -1,4 +1,4 @@
-package com.moe.music.authservice;
+package com.moe.music.jwt;
 
 import java.io.IOException;
 

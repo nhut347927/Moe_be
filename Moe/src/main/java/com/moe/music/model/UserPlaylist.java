@@ -25,22 +25,22 @@ import lombok.NoArgsConstructor;
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "PostStories")
-public class PostStory {
+@Table(name = "UserPlaylists")
+public class UserPlaylist {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "story_id", nullable = false)
+	@JoinColumn(name = "user_id", nullable = false)
 	@JsonBackReference
-	private Story story;
+	private User user;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "post_id", nullable = false)
+	@JoinColumn(name = "playlist_id", nullable = false)
 	@JsonBackReference
-	private Post post;
+	private Playlist playlist;
 
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt;

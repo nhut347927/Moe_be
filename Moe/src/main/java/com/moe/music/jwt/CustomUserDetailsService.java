@@ -1,4 +1,4 @@
-package com.moe.music.authservice;
+package com.moe.music.jwt;
 
 import java.util.Optional;
 
@@ -25,38 +25,32 @@ public class CustomUserDetailsService implements UserDetailsService {
 	@Override
 	@Transactional(readOnly = true)
 	public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-		Optional<User> user;
+		if (email == null || email.isBlank()) {
+			return null;
+		}
 
+		Optional<User> optionalUser;
 		try {
-			user = userJPA.findByEmail(email);
+			optionalUser = userJPA.findByEmail(email);
 		} catch (Exception e) {
 			throw new AppException("Error retrieving user by email: " + email,
 					HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
-
-		if (!user.isPresent()) {
-			throw new UsernameNotFoundException("User not found with email: " + email);
+		if (optionalUser.isEmpty()) {
+			return null;
 		}
 
-		if (Boolean.TRUE.equals(user.get().getIsDeleted())) {
+		User user = optionalUser.get();
+
+		if (Boolean.TRUE.equals(user.getIsDeleted())) {
 			throw new AppException("User account has been deleted!", HttpStatus.FORBIDDEN.value());
 		}
 
-		try {
-			User foundUser = user.get();
-			if (foundUser.getRolePermissions() != null) {
-				Hibernate.initialize(AuthorityUtil.convertToAuthorities(foundUser.getRolePermissions()));
-			} else {
-				throw new AppException(
-						"Warning: User has no assigned role or permissions. Assigning default permissions if needed.",
-						HttpStatus.BAD_REQUEST.value());
-			}
-		} catch (Exception e) {
-			throw new AppException("Error initializing roles and permissions for email: " + email,
-					HttpStatus.INTERNAL_SERVER_ERROR.value());
+		if (!(user.getRolePermissions() == null || user.getRolePermissions().isEmpty())) {
+			Hibernate.initialize(AuthorityUtil.convertToAuthorities(user.getRolePermissions()));
 		}
 
-		return user.get();
+		return user;
 	}
 
 }

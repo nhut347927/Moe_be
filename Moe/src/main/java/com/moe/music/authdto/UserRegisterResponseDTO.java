@@ -14,9 +14,10 @@ import lombok.NoArgsConstructor;
 public class UserRegisterResponseDTO {
 	private Long userId;
 	private String email;
-	private String displayName;
+	private String userName;
 	private String profilePictureUrl;
 	private String bio;
 	private Gender gender;
+	private String provider;
 	private Set<String> roles;
 }

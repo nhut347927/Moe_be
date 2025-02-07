@@ -50,18 +50,23 @@ public class User implements UserDetails {
 	@Column(nullable = false, unique = true, length = 100)
 	private String email;
 
-	@Column(name = "password_hash", nullable = false, length = 255)
-	@NotBlank(message = "Password hash cannot be empty")
+	@Column(name = "password_hash", length = 255)
 	private String passwordHash;
 
-	@Column(name = "display_name", length = 100)
+	@Column(name = "display_name", nullable = false, unique = true, length = 100)
 	private String displayName;
 
+	@Column(length = 100)
+	private String name;
+	
 	@Column(name = "profile_picture_url", length = 255)
 	private String profilePictureUrl;
 
 	@Column(length = 255)
 	private String bio;
+	
+	@Column(name = "provider")
+	private String provider;
 
 	@Column(length = 100)
 	private String location;
@@ -151,7 +156,7 @@ public class User implements UserDetails {
 
 	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
-	private List<UserStory> userStories;
+	private List<UserPlaylist> userStories;
 
 	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference

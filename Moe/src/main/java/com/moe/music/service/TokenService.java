@@ -38,11 +38,11 @@ import jakarta.servlet.http.HttpServletRequest;
 public class TokenService {
 
 	private final Key key;
-	
+
 	private final UserJPA userJPA;
 
-//	@Value("${app.expiration}")
-//	private Long jwtExpirationMs;
+	@Value("${app.expiration}")
+	private Long jwtExpirationMs;
 
 	@Value("${app.expiration2}")
 	private Long jwtExpirationMs2;
@@ -77,16 +77,16 @@ public class TokenService {
 
 		return Jwts.builder().setSubject(user.getEmail())
 				.claim("roles", AuthorityUtil.convertToAuthorities(user.getRolePermissions())).setIssuedAt(new Date())
-				.setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs2))
+				.setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
 				.signWith(key, SignatureAlgorithm.HS256).compact();
 	}
 
 	public String generateAccessTokenFromRefreshToken(String refreshToken) {
-	    User user = this.getUserFromRefreshToken(refreshToken);
-	    if (user == null) {
-	        throw new UsernameNotFoundException("User not found for the given refresh token.");
-	    }
-	    return this.generateJwtToken(user);
+		User user = this.getUserFromRefreshToken(refreshToken);
+		if (user == null) {
+			throw new UsernameNotFoundException("User not found for the given refresh token.");
+		}
+		return this.generateJwtToken(user);
 	}
 
 	/**
@@ -137,9 +137,14 @@ public class TokenService {
 	 * @param token JWT token
 	 * @return Thời gian hết hạn của token
 	 */
-	public Date getExpirationDateFromJwtToken(String token) {
-		Claims claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
-		return claims.getExpiration();
+	public LocalDateTime getExpirationDateFromJwtToken(String token) {
+		try {
+			Claims claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
+
+			return claims.getExpiration().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+		} catch (Exception e) {
+			throw new AppException("Access Token Invalid or expired", HttpStatus.UNAUTHORIZED.value());
+		}
 	}
 
 	/**
@@ -150,8 +155,8 @@ public class TokenService {
 	 */
 	public boolean isTokenExpired(String token) {
 		try {
-			Date expirationDate = getExpirationDateFromJwtToken(token);
-			return expirationDate.before(new Date());
+			LocalDateTime expirationDate = getExpirationDateFromJwtToken(token);
+			return expirationDate.isBefore(LocalDateTime.now());
 		} catch (Exception e) {
 			System.out.println("Error checking token expiration: " + e.getMessage());
 			return true;
@@ -233,15 +238,16 @@ public class TokenService {
 	 * @return Access Token nếu tồn tại, ngược lại null
 	 */
 	public String extractAccessTokenFromCookie(HttpServletRequest request) {
-	    if (request.getCookies() != null) {
-	        for (Cookie cookie : request.getCookies()) {
-	            if ("access_token".equals(cookie.getName())) {
-	                return cookie.getValue();
-	            }
-	        }
-	    }
-	    return null;
+		if (request.getCookies() != null) {
+			for (Cookie cookie : request.getCookies()) {
+				if ("access_token".equals(cookie.getName())) {
+					return cookie.getValue();
+				}
+			}
+		}
+		return null;
 	}
+
 	/**
 	 * Lấy đối tượng người dùng từ Refresh Token.
 	 *

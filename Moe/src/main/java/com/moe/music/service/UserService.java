@@ -1,27 +1,28 @@
 package com.moe.music.service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.jackson2.JacksonFactory;
 import com.moe.music.authdto.LoginRequestDTO;
 import com.moe.music.authdto.LoginResponseDTO;
 import com.moe.music.authdto.RegisterRequestDTO;
 import com.moe.music.authdto.UserRegisterResponseDTO;
 import com.moe.music.exception.AppException;
-import com.moe.music.jpa.RoleJPA;
 import com.moe.music.jpa.UserJPA;
 import com.moe.music.model.Role;
 import com.moe.music.model.User;
@@ -43,6 +44,9 @@ public class UserService {
 	@Autowired
 	private TokenService tokenService;
 
+	@Value("${google.client.id}")
+	private String googleClientId;
+
 	@Transactional
 	public UserRegisterResponseDTO register(RegisterRequestDTO request) {
 
@@ -57,11 +61,15 @@ public class UserService {
 		if (!request.getPassword().equals(request.getConfirmPassword())) {
 			throw new AppException("Password and confirm password must match!", 400);
 		}
+		String baseName = request.getEmail().split("@")[0];
+		String uniqueUsername = baseName + System.currentTimeMillis();
 
 		User user = new User();
 		user.setEmail(request.getEmail().trim().toLowerCase());
 		user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-		user.setDisplayName(request.getDisplayName().trim());
+		user.setName(request.getDisplayName().trim());
+		user.setDisplayName(uniqueUsername);
+		user.setProvider("NORMAL");
 		user.setBio(request.getBio() != null ? request.getBio().trim() : "");
 		user.setProfilePictureUrl(request.getProfilePictureUrl() != null ? request.getProfilePictureUrl().trim() : "");
 
@@ -79,16 +87,16 @@ public class UserService {
 			UserRegisterResponseDTO userInfo = new UserRegisterResponseDTO();
 			userInfo.setUserId(savedUser.getId());
 			userInfo.setEmail(savedUser.getEmail());
-			userInfo.setDisplayName(savedUser.getDisplayName());
+			userInfo.setUserName(savedUser.getUsername());
 			userInfo.setBio(savedUser.getBio());
 			userInfo.setGender(savedUser.getGender());
+			userInfo.setProvider(savedUser.getProvider());
 			userInfo.setRoles(AuthorityUtil.convertToAuthorities(savedUser.getRolePermissions()));
 
 			return userInfo;
 
 		} catch (DataIntegrityViolationException e) {
-			throw new AppException("Database constraint error: " + e.getRootCause().getMessage(),
-					HttpStatus.CONFLICT.value());
+			throw new AppException("Database constraint error: " + e.getMessage(), HttpStatus.CONFLICT.value());
 		} catch (Exception e) {
 			throw new AppException("An unexpected error occurred during registration: " + e.getMessage(),
 					HttpStatus.INTERNAL_SERVER_ERROR.value());
@@ -96,12 +104,17 @@ public class UserService {
 	}
 
 	public LoginResponseDTO login(LoginRequestDTO request) {
+
 		if (request.getEmail() == null || request.getEmail().isEmpty() || request.getPassword() == null
 				|| request.getPassword().isEmpty()) {
 			throw new AppException("Email and password must not be empty", HttpStatus.BAD_REQUEST.value());
 		}
 
 		Optional<User> user = userJpa.findByEmail(request.getEmail());
+
+		if (!user.isPresent()) {
+			throw new AppException("Email is not registered.", HttpStatus.NOT_FOUND.value());
+		}
 
 		if (user == null || !passwordEncoder.matches(request.getPassword(), user.get().getPasswordHash())) {
 			throw new AppException("Invalid email or password", HttpStatus.UNAUTHORIZED.value());
@@ -115,8 +128,8 @@ public class UserService {
 			responseDTO.setAccessToken(accessToken);
 			responseDTO.setRefreshToken(refreshToken);
 
-			Date expirationDate = tokenService.getExpirationDateFromJwtToken(accessToken);
-			long expiresInSeconds = (expirationDate.getTime() - System.currentTimeMillis()) / 1000;
+			LocalDateTime expirationDate = tokenService.getExpirationDateFromJwtToken(accessToken);
+			long expiresInSeconds = ChronoUnit.SECONDS.between(LocalDateTime.now(), expirationDate);
 			long expiresInHours = expiresInSeconds / 3600;
 			responseDTO.setAccessTokenExpiresIn(expiresInHours + " Giờ");
 
@@ -128,10 +141,11 @@ public class UserService {
 			UserRegisterResponseDTO userInfo = new UserRegisterResponseDTO();
 			userInfo.setUserId(user.get().getId());
 			userInfo.setEmail(user.get().getEmail());
-			userInfo.setDisplayName(user.get().getDisplayName());
+			userInfo.setUserName(user.get().getUsername());
 			userInfo.setRoles(AuthorityUtil.convertToAuthorities(user.get().getRolePermissions()));
 			userInfo.setBio(user.get().getBio());
 			userInfo.setGender(user.get().getGender());
+			userInfo.setProvider(user.get().getProvider());
 			userInfo.setProfilePictureUrl(user.get().getProfilePictureUrl());
 
 			responseDTO.setUser(userInfo);
@@ -139,6 +153,80 @@ public class UserService {
 		} catch (Exception e) {
 			throw new AppException("Failed to generate tokens: " + e.getMessage(),
 					HttpStatus.INTERNAL_SERVER_ERROR.value());
+		}
+	}
+
+	public LoginResponseDTO loginWithGoogle(String token) {
+		GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(),
+				JacksonFactory.getDefaultInstance()).setAudience(Collections.singletonList(googleClientId)).build();
+
+		try {
+			GoogleIdToken idToken = verifier.verify(token);
+			if (idToken != null) {
+				GoogleIdToken.Payload payload = idToken.getPayload();
+
+				String email = payload.getEmail();
+				String name = (String) payload.get("name");
+				String pictureUrl = (String) payload.get("picture");
+
+				Optional<User> userCheck = userJpa.findByEmail(email);
+				User user;
+
+				if (userCheck.isPresent()) {
+					user = userCheck.get();
+					if (!user.getProvider().equals("GOOGLE")) {
+						throw new AppException("Email already exists", HttpStatus.CONFLICT.value());
+					}
+				} else {
+					String baseName = email.split("@")[0];
+					String uniqueUsername = baseName + System.currentTimeMillis();
+
+					user = new User();
+					user.setEmail(email);
+					user.setPasswordHash(null);
+					user.setName(name);
+					user.setDisplayName(uniqueUsername);
+					user.setProfilePictureUrl(pictureUrl);
+					user.setProvider("GOOGLE");
+
+					userJpa.save(user);
+				}
+
+				String refreshToken = tokenService.generateRefreshToken(user);
+				String accessToken = tokenService.generateJwtToken(user);
+
+				LoginResponseDTO responseDTO = new LoginResponseDTO();
+				responseDTO.setAccessToken(accessToken);
+				responseDTO.setRefreshToken(refreshToken);
+
+				LocalDateTime expirationDate = tokenService.getExpirationDateFromJwtToken(accessToken);
+				long expiresInSeconds = ChronoUnit.SECONDS.between(LocalDateTime.now(), expirationDate);
+				long expiresInHours = expiresInSeconds / 3600;
+				responseDTO.setAccessTokenExpiresIn(expiresInHours + " Giờ");
+
+				LocalDateTime expirationDateRe = tokenService.getExpirationDateFromJwtRefreshToken(refreshToken);
+				long expiresInSecondsRe = ChronoUnit.SECONDS.between(LocalDateTime.now(), expirationDateRe);
+				long expiresInHoursRe = expiresInSecondsRe / 3600;
+				responseDTO.setRefreshTokenExpiresIn(expiresInHoursRe + " Giờ");
+
+				UserRegisterResponseDTO userInfo = new UserRegisterResponseDTO();
+				userInfo.setUserId(user.getId());
+				userInfo.setEmail(user.getEmail());
+				userInfo.setUserName(user.getUsername());
+				userInfo.setRoles(AuthorityUtil.convertToAuthorities(user.getRolePermissions()));
+				userInfo.setBio(user.getBio());
+				userInfo.setGender(user.getGender());
+				userInfo.setProvider(user.getProvider());
+				userInfo.setProfilePictureUrl(user.getProfilePictureUrl());
+
+				responseDTO.setUser(userInfo);
+				return responseDTO;
+			} else {
+				throw new AppException("Invalid ID token", HttpStatus.UNAUTHORIZED.value());
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new AppException("An error occurred: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
 	}
 

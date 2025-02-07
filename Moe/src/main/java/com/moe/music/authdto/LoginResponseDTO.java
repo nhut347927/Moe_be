@@ -12,5 +12,6 @@ public class LoginResponseDTO {
     private String accessTokenExpiresIn;
     private String refreshToken;
     private String refreshTokenExpiresIn;
+    private String provider;
     private UserRegisterResponseDTO user;
 }

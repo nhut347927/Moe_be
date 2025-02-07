@@ -78,7 +78,7 @@ public class Post {
 
 	@OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
-	private List<PostStory> postStories;
+	private List<PostPlaylist> postStories;
 
 	@OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference

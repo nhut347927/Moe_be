@@ -29,8 +29,8 @@ import lombok.NoArgsConstructor;
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "Stories")
-public class Story {
+@Table(name = "Playlists")
+public class Playlist {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -64,13 +64,13 @@ public class Story {
 	@JoinColumn(name = "user_id", nullable = false)
 	private User user;
 
-	@OneToMany(mappedBy = "story", cascade = CascadeType.ALL, orphanRemoval = true)
+	@OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
-	private List<PostStory> postStories;
+	private List<PostPlaylist> postPlaylists;
 
-	@OneToMany(mappedBy = "story", cascade = CascadeType.ALL, orphanRemoval = true)
+	@OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
-	private List<UserStory> userStories;
+	private List<UserPlaylist> userPlaylists;
 
 	@PrePersist
 	protected void onCreate() {

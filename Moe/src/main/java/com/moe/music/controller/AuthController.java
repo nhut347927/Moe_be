@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.moe.music.authdto.ChangePasswordRequestDTO;
 import com.moe.music.authdto.LoginRequestDTO;
 import com.moe.music.authdto.LoginResponseDTO;
+import com.moe.music.authdto.LoginWithGoogleRequestDTO;
 import com.moe.music.authdto.RegisterRequestDTO;
 import com.moe.music.authdto.RequestPasswordResetRequestDTO;
 import com.moe.music.authdto.ResetPasswordRequestDTO;
@@ -120,7 +121,54 @@ public class AuthController {
 	        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 	    }
 	}
+	
+	@PostMapping("/google-login")
+	public ResponseEntity<ResponseAPI<LoginResponseDTO>> loginWithGoogle(@RequestBody @Valid LoginWithGoogleRequestDTO request) {
+	    ResponseAPI<LoginResponseDTO> response = new ResponseAPI<>();
+	    try {
+	        LoginResponseDTO login = userService.loginWithGoogle(request.getToken());
 
+	        int maxAgeAccessToken = (int) (jwtExpirationMs / 1000);
+	        int maxAgeRefreshToken = (int) (jwtExpirationMs2 / 1000);
+
+	        // Set cookies with Secure set to true for HTTPS environment
+	        ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", login.getRefreshToken())
+	                .httpOnly(true)  
+	                .secure(false)   
+	                .path("/")    
+	                .maxAge(maxAgeRefreshToken) 
+	                .sameSite("Lax")
+	                .build();
+
+	        ResponseCookie accessCookie = ResponseCookie.from("access_token", login.getAccessToken())
+	                .httpOnly(true)  // Sử dụng httpOnly để tăng bảo mật
+	                .secure(false)    // Secure=true trong môi trường HTTPS
+	                .path("/")       // Đường dẫn cookie
+	                .maxAge(maxAgeAccessToken) // Thời gian sống của cookie
+	                .sameSite("Lax")
+	                .build();
+
+	        response.setCode(200);
+	        response.setMessage("Login successful!");
+	        response.setData(login);
+
+	        return ResponseEntity.ok()
+	                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+	                .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+	                .body(response);
+
+	    } catch (AppException e) {
+	        response.setCode(e.getStatusCode());
+	        response.setMessage(e.getMessage());
+	        response.setData(null);
+	        return ResponseEntity.status(e.getStatusCode()).body(response);
+	    } catch (Exception e) {
+	        response.setCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+	        response.setMessage("An error occurred: " + e.getMessage());
+	        response.setData(null);
+	        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+	    }
+	}
 
 	@PutMapping("/change-password")
 	public ResponseEntity<ResponseAPI<String>> changePassword(@AuthenticationPrincipal User user,
