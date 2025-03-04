@@ -32,6 +32,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/request-password-reset").permitAll()
                         .requestMatchers("/api/auth/reset-password").permitAll()
                         
+                        .requestMatchers("/api/upload/image").permitAll()
+                        .requestMatchers("/api/upload/video").permitAll()
+                        
                         .requestMatchers("/api/auth/change-password").hasAuthority("ADMIN_INSERT")
                         .anyRequest().authenticated())
                 .cors().and()

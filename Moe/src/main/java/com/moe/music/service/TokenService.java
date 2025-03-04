@@ -4,24 +4,17 @@ import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import com.moe.music.exception.AppException;
 import com.moe.music.jpa.UserJPA;
-import com.moe.music.model.RolePermission;
 import com.moe.music.model.User;
 import com.moe.music.utility.AuthorityUtil;
 
@@ -47,7 +40,6 @@ public class TokenService {
 	@Value("${app.expiration2}")
 	private Long jwtExpirationMs2;
 
-	@Autowired
 	public TokenService(UserJPA userJPA, @Value("${app.jwtSecret}") String jwtSecret) {
 		this.userJPA = userJPA;
 		byte[] secretBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);

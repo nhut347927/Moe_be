@@ -10,6 +10,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.moe.music.utility.AuthorityUtil;
 
@@ -22,6 +23,8 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
@@ -71,6 +74,9 @@ public class User implements UserDetails {
 	@Column(length = 100)
 	private String location;
 
+	@Column(length = 255)
+	private String avatar;
+
 	@Column(name = "date_of_birth")
 	private LocalDateTime dateOfBirth;
 
@@ -91,6 +97,21 @@ public class User implements UserDetails {
 
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_create", insertable = false, updatable = false)
+	@JsonBackReference
+	private User userCreate;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_update", insertable = false, updatable = false)
+	@JsonBackReference
+	private User userUpdate;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_delete", insertable = false, updatable = false)
+	@JsonBackReference
+	private User userDelete;
 
 	@Column(name = "last_login")
 	private LocalDateTime lastLogin;
@@ -170,7 +191,7 @@ public class User implements UserDetails {
 	@JsonManagedReference
 	private List<CommentLike> commentLikes;
 
-	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
 	@JsonManagedReference
 	private List<RolePermission> rolePermissions;
 

@@ -8,7 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import com.moe.music.model.RolePermission;
 
-public interface RolePermissionJPA extends JpaRepository<RolePermission, Integer> {
+public interface RolePermissionJPA extends JpaRepository<RolePermission, Long> {
 	@Query("SELECT rp FROM RolePermission rp JOIN rp.user u WHERE u.id = :userId")
 	List<RolePermission> findRolePermissionsByUserId(@Param("userId") Long userId);
 }

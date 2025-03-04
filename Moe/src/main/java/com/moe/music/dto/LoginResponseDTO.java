@@ -1,4 +1,4 @@
-package com.moe.music.authdto;
+package com.moe.music.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

@@ -50,11 +50,17 @@ public class Post {
 	@Column(name = "video", length = 255)
 	private String video;
 
-	@Column(name = "audio", length = 255)
-	private String audio;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "audio_id")
+    @JsonBackReference(value = "audio-post")
+    private Audio audio;
 
-	@Column(name = "view_count", columnDefinition = "int default 0")
-	private Integer viewCount = 0;
+	@Enumerated(EnumType.STRING)
+	@Column(name = "type", nullable = false)
+	private PostType type;
+	
+	@Column(name = "is_deleted", columnDefinition = "boolean default false")
+	private Boolean isDeleted = false;
 
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt;
@@ -64,17 +70,21 @@ public class Post {
 
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
-
-	@Column(name = "is_deleted", columnDefinition = "boolean default false")
-	private Boolean isDeleted = false;
-
+	
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "audio_post_id")
-	private Post ownerAudioPostId;
-
-	@Enumerated(EnumType.STRING)
-	@Column(name = "type", nullable = false)
-	private PostType type;
+	@JoinColumn(name = "user_create", insertable = false, updatable = false)
+	@JsonBackReference
+	private User userCreate;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_update", insertable = false, updatable = false)
+	@JsonBackReference
+	private User userUpdate;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_delete", insertable = false, updatable = false)
+	@JsonBackReference
+	private User userDelete;
 
 	@OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
@@ -100,6 +110,19 @@ public class Post {
 	@JsonManagedReference
 	private List<View> views;
 
+	@OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+	@JsonManagedReference
+	private List<PostPlaylist> postPlaylists;
+
+	public void softDelete() {
+		this.deletedAt = LocalDateTime.now();
+		this.isDeleted = true;
+	}
+
+	public void restore() {
+		this.isDeleted = false;
+	}
+
 	@PrePersist
 	protected void onCreate() {
 		LocalDateTime now = LocalDateTime.now();
@@ -112,14 +135,6 @@ public class Post {
 		this.updatedAt = LocalDateTime.now();
 	}
 
-	public void softDelete() {
-		this.deletedAt = LocalDateTime.now();
-		this.isDeleted = true;
-	}
-
-	public void restore() {
-		this.isDeleted = false;
-	}
 
 	public enum PostType {
 		IMAGE, // Dành cho bài đăng là ảnh

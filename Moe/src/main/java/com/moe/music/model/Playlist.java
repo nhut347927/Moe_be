@@ -3,6 +3,7 @@ package com.moe.music.model;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.CascadeType;
@@ -48,6 +49,9 @@ public class Playlist {
 	@Column(name = "image", length = 255)
 	private String image;
 
+	@Column(name = "is_deleted", columnDefinition = "boolean default false")
+	private Boolean isDeleted = false;
+
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt;
 
@@ -57,8 +61,20 @@ public class Playlist {
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
 
-	@Column(name = "is_deleted", columnDefinition = "boolean default false")
-	private Boolean isDeleted = false;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_create", insertable = false, updatable = false)
+	@JsonBackReference
+	private User userCreate;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_update", insertable = false, updatable = false)
+	@JsonBackReference
+	private User userUpdate;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_delete", insertable = false, updatable = false)
+	@JsonBackReference
+	private User userDelete;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "user_id", nullable = false)
@@ -72,6 +88,15 @@ public class Playlist {
 	@JsonManagedReference
 	private List<UserPlaylist> userPlaylists;
 
+	public void softDelete() {
+		this.deletedAt = LocalDateTime.now();
+		this.isDeleted = true;
+	}
+
+	public void restore() {
+		this.isDeleted = false;
+	}
+
 	@PrePersist
 	protected void onCreate() {
 		LocalDateTime now = LocalDateTime.now();
@@ -84,12 +109,4 @@ public class Playlist {
 		this.updatedAt = LocalDateTime.now();
 	}
 
-	public void softDelete() {
-		this.deletedAt = LocalDateTime.now();
-		this.isDeleted = true;
-	}
-
-	public void restore() {
-		this.isDeleted = false;
-	}
 }

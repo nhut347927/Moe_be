@@ -13,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -48,19 +49,32 @@ public class Message {
 	@Column(name = "is_read", columnDefinition = "boolean default false")
 	private Boolean isRead = false;
 
+	@Column(name = "is_deleted", columnDefinition = "boolean default false")
+	private Boolean isDeleted = false;
+
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt;
+
+	@Column(name = "updated_at")
+	private LocalDateTime updatedAt;
 
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
 
-	@Column(name = "is_deleted", columnDefinition = "boolean default false")
-	private Boolean isDeleted = false;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_create", insertable = false, updatable = false)
+	@JsonBackReference
+	private User userCreate;
 
-	@PrePersist
-	protected void onCreate() {
-		this.createdAt = LocalDateTime.now();
-	}
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_update", insertable = false, updatable = false)
+	@JsonBackReference
+	private User userUpdate;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_delete", insertable = false, updatable = false)
+	@JsonBackReference
+	private User userDelete;
 
 	public void softDelete() {
 		this.deletedAt = LocalDateTime.now();
@@ -70,4 +84,17 @@ public class Message {
 	public void restore() {
 		this.isDeleted = false;
 	}
+
+	@PrePersist
+	protected void onCreate() {
+		LocalDateTime now = LocalDateTime.now();
+		this.createdAt = now;
+		this.updatedAt = now;
+	}
+
+	@PreUpdate
+	protected void onUpdate() {
+		this.updatedAt = LocalDateTime.now();
+	}
+
 }

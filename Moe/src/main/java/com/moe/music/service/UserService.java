@@ -1,13 +1,10 @@
 package com.moe.music.service;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
-import java.util.Date;
 import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -16,15 +13,17 @@ import org.springframework.stereotype.Service;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.json.jackson2.JacksonFactory;
-import com.moe.music.authdto.LoginRequestDTO;
-import com.moe.music.authdto.LoginResponseDTO;
-import com.moe.music.authdto.RegisterRequestDTO;
-import com.moe.music.authdto.UserRegisterResponseDTO;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.gson.GsonFactory;
+import com.moe.music.dto.LoginRequestDTO;
+import com.moe.music.dto.LoginResponseDTO;
+import com.moe.music.dto.RegisterRequestDTO;
+import com.moe.music.dto.UserRegisterResponseDTO;
 import com.moe.music.exception.AppException;
+import com.moe.music.interfaces.UserInterface;
 import com.moe.music.jpa.UserJPA;
-import com.moe.music.model.Role;
 import com.moe.music.model.User;
 import com.moe.music.model.User.Gender;
 import com.moe.music.utility.AuthorityUtil;
@@ -33,19 +32,22 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 
 @Service
-public class UserService {
+public class UserService implements UserInterface {
 
-	@Autowired
 	private UserJPA userJpa;
 
-	@Autowired
 	private PasswordEncoder passwordEncoder;
 
-	@Autowired
 	private TokenService tokenService;
 
 	@Value("${google.client.id}")
 	private String googleClientId;
+
+	public UserService(UserJPA userJPA, PasswordEncoder passwordEncoder, TokenService tokenService) {
+		this.userJpa = userJPA;
+		this.passwordEncoder = passwordEncoder;
+		this.tokenService = tokenService;
+	};
 
 	@Transactional
 	public UserRegisterResponseDTO register(RegisterRequestDTO request) {
@@ -157,8 +159,12 @@ public class UserService {
 	}
 
 	public LoginResponseDTO loginWithGoogle(String token) {
-		GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(),
-				JacksonFactory.getDefaultInstance()).setAudience(Collections.singletonList(googleClientId)).build();
+
+		HttpTransport transport = new NetHttpTransport();
+		JsonFactory jsonFactory = GsonFactory.getDefaultInstance();
+
+		GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(transport, jsonFactory)
+				.setAudience(Collections.singletonList(googleClientId)).build();
 
 		try {
 			GoogleIdToken idToken = verifier.verify(token);
@@ -225,7 +231,6 @@ public class UserService {
 				throw new AppException("Invalid ID token", HttpStatus.UNAUTHORIZED.value());
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
 			throw new AppException("An error occurred: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
 	}
@@ -282,5 +287,11 @@ public class UserService {
 
 	public void logOut(User user) {
 		tokenService.clearTokens(user);
+	}
+
+	@Override
+	public void updateProfile(User user, String newBio, String newProfilePictureUrl) {
+		// TODO Auto-generated method stub
+
 	}
 }

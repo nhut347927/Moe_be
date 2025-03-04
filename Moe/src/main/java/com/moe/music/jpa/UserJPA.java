@@ -8,7 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import com.moe.music.model.User;
 
-public interface UserJPA extends JpaRepository<User, Integer> {
+public interface UserJPA extends JpaRepository<User, Long> {
 	@Query("SELECT u FROM User u WHERE u.email = :email")
 	Optional<User> findByEmail(@Param("email") String email);
 	

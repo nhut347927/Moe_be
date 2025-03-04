@@ -4,6 +4,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.moe.music.model.PostPlaylist;
 
-public interface PostStoryJPA extends JpaRepository<PostPlaylist, Integer> {
+public interface PostStoryJPA extends JpaRepository<PostPlaylist, Long> {
 
 }

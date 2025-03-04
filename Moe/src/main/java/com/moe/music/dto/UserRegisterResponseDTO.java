@@ -1,4 +1,4 @@
-package com.moe.music.authdto;
+package com.moe.music.dto;
 
 import java.util.Set;
 

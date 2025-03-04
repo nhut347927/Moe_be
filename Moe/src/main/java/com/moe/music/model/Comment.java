@@ -63,6 +63,9 @@ public class Comment {
 	@JsonManagedReference
 	private List<CommentLike> commentLikes;
 
+	@Column(name = "is_deleted", columnDefinition = "boolean default false")
+	private Boolean isDeleted = false;
+
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt;
 
@@ -71,9 +74,30 @@ public class Comment {
 
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_create", insertable = false, updatable = false)
+	@JsonBackReference
+	private User userCreate;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_update", insertable = false, updatable = false)
+	@JsonBackReference
+	private User userUpdate;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_delete", insertable = false, updatable = false)
+	@JsonBackReference
+	private User userDelete;
 
-	@Column(name = "is_deleted", nullable = false, columnDefinition = "boolean default false")
-	private Boolean isDeleted = false;
+	public void softDelete() {
+		this.deletedAt = LocalDateTime.now();
+		this.isDeleted = true;
+	}
+
+	public void restore() {
+		this.isDeleted = false;
+	}
 
 	@PrePersist
 	protected void onCreate() {
@@ -87,9 +111,5 @@ public class Comment {
 		this.updatedAt = LocalDateTime.now();
 	}
 
-	public void softDelete() {
-		this.isDeleted = true;
-		this.deletedAt = LocalDateTime.now();
-	}
 
 }
