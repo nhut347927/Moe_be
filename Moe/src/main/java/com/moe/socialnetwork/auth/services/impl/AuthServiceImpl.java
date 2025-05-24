@@ -21,9 +21,9 @@ import com.moe.socialnetwork.auth.dtos.LoginResponseDTO;
 import com.moe.socialnetwork.auth.dtos.RegisterRequestDTO;
 import com.moe.socialnetwork.auth.dtos.UserRegisterResponseDTO;
 import com.moe.socialnetwork.auth.services.IAuthService;
+import com.moe.socialnetwork.auth.services.ITokenService;
+import com.moe.socialnetwork.common.jpa.UserJpa;
 import com.moe.socialnetwork.common.models.User;
-import com.moe.socialnetwork.common.models.User.Gender;
-import com.moe.socialnetwork.common.repositories.UserRepository;
 import com.moe.socialnetwork.exception.AppException;
 import com.moe.socialnetwork.util.AuthorityUtil;
 
@@ -33,13 +33,13 @@ import jakarta.transaction.Transactional;
 @Service
 public class AuthServiceImpl implements IAuthService {
 
-    private final UserRepository userJpa;
+    private final UserJpa userJpa;
     private final PasswordEncoder passwordEncoder;
-    private final TokenServiceImpl tokenService;
+    private final ITokenService tokenService;
     @Value("${google.client.id}")
     private String googleClientId;
 
-    public AuthServiceImpl(UserRepository userJPA, PasswordEncoder passwordEncoder, TokenServiceImpl tokenService) {
+    public AuthServiceImpl(UserJpa userJPA, PasswordEncoder passwordEncoder, TokenServiceImpl tokenService) {
         this.userJpa = userJPA;
         this.passwordEncoder = passwordEncoder;
         this.tokenService = tokenService;
@@ -48,18 +48,13 @@ public class AuthServiceImpl implements IAuthService {
     @Transactional
     public UserRegisterResponseDTO register(RegisterRequestDTO request) {
         String email = request.getEmail().trim().toLowerCase();
-        String displayName = request.getDisplayName().trim();
-
-        if (userJpa.findByEmail(email).isPresent()) {
-            throw new AppException("Email already exists", HttpStatus.CONFLICT.value());
-        }
-
-        if (userJpa.findByUserName(displayName).isPresent()) {
-            throw new AppException("Display name already exists", HttpStatus.CONFLICT.value());
-        }
 
         if (!request.getPassword().equals(request.getConfirmPassword())) {
             throw new AppException("Password and confirm password must match", HttpStatus.BAD_REQUEST.value());
+        }
+
+        if (userJpa.findByEmail(email).isPresent()) {
+            throw new AppException("Email already exists", HttpStatus.CONFLICT.value());
         }
 
         String baseName = email.split("@")[0];
@@ -68,18 +63,9 @@ public class AuthServiceImpl implements IAuthService {
         User user = new User();
         user.setEmail(email);
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setDisplayName(displayName);
+        user.setDisplayName(request.getDisplayName());
         user.setUserName(uniqueUsername);
-        user.setProvider("NORMAL");
-        user.setBio(request.getBio() != null ? request.getBio().trim() : "");
-        user.setAvatar(request.getProfilePictureUrl() != null ? request.getProfilePictureUrl().trim() : "");
-
-        try {
-            user.setGender(Gender.valueOf(request.getGender() != null ? request.getGender().trim().toUpperCase() : "PREFER_NOT_TO_SAY"));
-        } catch (IllegalArgumentException e) {
-            user.setGender(Gender.PREFER_NOT_TO_SAY);
-        }
-
+        
         try {
             User savedUser = userJpa.save(user);
             return buildUserRegisterResponse(savedUser);

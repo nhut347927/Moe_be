@@ -13,8 +13,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.moe.socialnetwork.common.jpa.UserJpa;
 import com.moe.socialnetwork.common.models.User;
-import com.moe.socialnetwork.common.repositories.UserRepository;
 import com.moe.socialnetwork.exception.AppException;
 
 import com.moe.socialnetwork.util.AuthorityUtil;
@@ -23,7 +23,7 @@ import com.moe.socialnetwork.util.AuthorityUtil;
 public class CustomUserDetailsService implements UserDetailsService {
 
 	@Autowired
-	private UserRepository userJPA;
+	private UserJpa userJPA;
 
 	@Override
 	@Transactional(readOnly = true)

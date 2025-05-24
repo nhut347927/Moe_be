@@ -22,18 +22,9 @@ public class RegisterRequestDTO {
 	private String confirmPassword;
 
 	@NotBlank(message = "Display name is required!")
-	@Size(min = 3, max = 100, message = "Display name must be between 3 and 100 characters.")
+	@Size(min = 8, max = 100, message = "Display name must be between 3 and 100 characters.")
 	@Pattern(regexp = "^[a-zA-Z0-9][a-zA-Z0-9]*$", message = "Display name cannot start or end with special characters or spaces.")
 	@Pattern(regexp = "^(?!admin|root|superuser).*", message = "Display name cannot be a reserved keyword.")
 	private String displayName;
-
-	@Size(max = 255, message = "Bio must not exceed 255 characters!")
-	private String bio;
-
-	@Size(max = 50, message = "Gender must not exceed 50 characters!")
-	private String gender;
-
-	@Size(max = 255, message = "Profile picture URL must not exceed 255 characters!")
-	private String profilePictureUrl;
 
 }

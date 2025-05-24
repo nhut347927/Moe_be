@@ -10,7 +10,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CommentDTO {
-    private String commentId;
+    private String commentCode;
     private String userAvatar;
     private String content;
     private String displayName;

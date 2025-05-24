@@ -18,8 +18,8 @@ import com.moe.socialnetwork.auth.dtos.LoginRequestDTO;
 import com.moe.socialnetwork.auth.dtos.LoginResponseDTO;
 import com.moe.socialnetwork.auth.dtos.LoginWithGoogleRequestDTO;
 import com.moe.socialnetwork.auth.dtos.RegisterRequestDTO;
-import com.moe.socialnetwork.auth.dtos.RequestPasswordResetRequestDTO;
-import com.moe.socialnetwork.auth.dtos.ResetPasswordRequestDTO;
+import com.moe.socialnetwork.auth.dtos.PasswordResetRequestRequestDTO;
+import com.moe.socialnetwork.auth.dtos.PasswordResetRequestDTO;
 import com.moe.socialnetwork.auth.dtos.UserRegisterResponseDTO;
 import com.moe.socialnetwork.auth.services.IAuthService;
 import com.moe.socialnetwork.auth.services.ITokenService;
@@ -81,8 +81,8 @@ public class AuthController {
                 "Password updated for user: " + user.getUsername()));
     }
 
-    @PostMapping("/request-password-reset")
-    public ResponseEntity<ResponseAPI<String>> requestPasswordReset(@RequestBody @Valid RequestPasswordResetRequestDTO request) {
+    @PostMapping("/password-reset-request")
+    public ResponseEntity<ResponseAPI<String>> passwordResetRequest(@RequestBody @Valid PasswordResetRequestRequestDTO request) {
         User user = authService.findByEmail(request.getEmail());
         String resetToken = tokenService.generatePasswordResetToken(user);
         emailService.sendPasswordResetEmail(user.getEmail(), resetToken);
@@ -91,8 +91,8 @@ public class AuthController {
                 "Password reset email sent successfully. Please check your email!", "Success"));
     }
 
-    @PostMapping("/reset-password")
-    public ResponseEntity<ResponseAPI<String>> resetPassword(@RequestBody @Valid ResetPasswordRequestDTO request) {
+    @PostMapping("/password-reset")
+    public ResponseEntity<ResponseAPI<String>> passwordReset(@RequestBody @Valid PasswordResetRequestDTO request) {
         User user = authService.findByResetToken(request.getToken());
 
         if (!tokenService.validatePasswordResetToken(user, request.getToken())) {

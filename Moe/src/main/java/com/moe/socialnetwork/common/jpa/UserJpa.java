@@ -1,4 +1,4 @@
-package com.moe.socialnetwork.common.repositories;
+package com.moe.socialnetwork.common.jpa;
 
 import java.util.Optional;
 
@@ -8,7 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import com.moe.socialnetwork.common.models.User;
 
-public interface UserRepository extends JpaRepository<User, Long> {
+public interface UserJpa extends JpaRepository<User, Long> {
 	@Query("SELECT u FROM User u WHERE u.email = :email")
 	Optional<User> findByEmail(@Param("email") String email);
 	

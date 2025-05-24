@@ -36,27 +36,40 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     private Long jwtExpirationMs;
 
     @Override
-    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain chain)
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
+            @NonNull FilterChain chain)
             throws ServletException, IOException {
 
         String email = null;
-        String jwt = tokenService.extractAccessTokenFromCookie(request);
+        String jwt = extractToken(request);
+
+        // Skip token validation for public endpoints
+        if (isPublicEndpoint(request)) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+        // If no token is provided for protected endpoints, return unauthorized
+        if (jwt == null) {
+            sendErrorResponse(response, "JWT token is missing", 401);
+            return;
+        }
 
         try {
-            if (jwt != null && tokenService.validateJwtToken(jwt)) {
+            if (tokenService.validateJwtToken(jwt)) {
                 email = tokenService.getEmailFromJwtToken(jwt);
             } else {
-               
-                      
-                        
-                     
-                 
+                sendErrorResponse(response, "Invalid JWT token", 401);
+                return;
             }
         } catch (ExpiredJwtException e) {
-            sendErrorResponse(response, "Your refresh token has expired. Please log in again.", 401);
+            sendErrorResponse(response, "JWT token has expired. Please log in again.", 401);
             return;
         } catch (AppException e) {
             sendErrorResponse(response, "An application error occurred: " + e.getMessage(), 500);
+            return;
+        } catch (Exception e) {
+            sendErrorResponse(response, "Invalid JWT token format", 401);
             return;
         }
 
@@ -68,10 +81,40 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                         userDetails, null, userDetails.getAuthorities());
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+            } else {
+                sendErrorResponse(response, "User not found for email: " + email, 401);
+                return;
             }
         }
 
         chain.doFilter(request, response);
+    }
+
+    private String extractToken(HttpServletRequest request) {
+        // First, try to extract token from cookie
+        String jwt = tokenService.extractAccessTokenFromCookie(request);
+
+        // If no token in cookie, try Authorization header
+        if (jwt == null) {
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                jwt = authHeader.substring(7); // Remove "Bearer " prefix
+            }
+        }
+
+        return jwt;
+    }
+
+    private boolean isPublicEndpoint(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("/api/auth/register") ||
+                path.startsWith("/api/auth/login") ||
+                path.startsWith("/api/auth/google-login") ||
+                path.startsWith("/api/auth//change-password") ||
+                path.startsWith("/api/auth//password-reset-request") ||
+                path.startsWith("/api/auth/password-reset") ||
+                path.startsWith("/api/auth/refresh-token") ||
+                path.startsWith("/api/auth//logout");
     }
 
     private void sendErrorResponse(HttpServletResponse response, String message, int statusCode) throws IOException {

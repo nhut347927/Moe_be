@@ -171,7 +171,7 @@ public class User implements UserDetails {
 
 	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
-	private List<UserPlaylist> userStories;
+	private List<UserPlaylist> userPlaylists;
 
 	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference
@@ -217,6 +217,20 @@ public class User implements UserDetails {
 		}
 	}
 
+	@PrePersist
+	public void preGender() {
+		if (gender == null) {
+			gender = Gender.NOT_UPDATED_YET;
+		}
+	}
+
+	@PrePersist
+	public void preProvider() {
+		if (provider == null) {
+			provider = "NORMAL";
+		}
+	}
+
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
 
@@ -251,6 +265,6 @@ public class User implements UserDetails {
 	}
 
 	public enum Gender {
-		MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY
+		MALE, FEMALE, OTHER, NOT_UPDATED_YET
 	}
 }

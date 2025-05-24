@@ -35,6 +35,15 @@ public interface ICloudinaryService {
     String uploadAudio(MultipartFile file) throws IOException;
 
     /**
+     * Upload any file to Cloudinary.
+     *
+     * @param file The file to upload.
+     * @return The public ID of the uploaded file.
+     * @throws IOException If an error occurs during the upload.
+     */
+    String uploadAnyFile(MultipartFile file) throws IOException;
+
+    /**
      * Delete a file from Cloudinary.
      *
      * @param publicId The public ID of the file to delete.
@@ -52,4 +61,7 @@ public interface ICloudinaryService {
      * @throws IOException If an error occurs during the conversion.
      */
     File convertMultipartToFile(MultipartFile file, String filename) throws IOException;
+
+    File extractAudioFromVideo(File videoFile) throws IOException;
+    File mergeVideoWithAudio(File video, File audio) throws IOException;
 }

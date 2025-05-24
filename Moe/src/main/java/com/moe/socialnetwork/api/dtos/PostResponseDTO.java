@@ -9,27 +9,29 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class PostRCMRequestDTO {
-    private String userId;
-    private String postId;
+public class PostResponseDTO {
+    private String userCode;
+    private String postCode;
     private String createdAt;
 
     private String userAvatar;
     private String userDisplayName;
+    private String userName;
 
     private String postType; // "VIDEO" hoặc "IMAGE"
     private String videoUrl;
     private List<String> imageUrls;
-    private String caption;
+    private String title;
+    private String description;
 
     private String likeCount;
     private String commentCount;
-    private String playlistCount;
+    private Boolean isAddPlaylist;
 
     private String audioUrl;
     private String audioOwnerAvatar;
-    private String audioOwnerName;
-    private String audioId;
+    private String audioOwnerDisplayName;
+    private String audioCode;
 
     private List<CommentDTO> comments;
 }

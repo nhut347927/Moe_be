@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ReplyDTO {
-    private String commentId;
+    private String commentCode;
     private String userAvatar;
     private String content;
     private String displayName;

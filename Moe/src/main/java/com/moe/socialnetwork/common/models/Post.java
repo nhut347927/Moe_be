@@ -48,11 +48,14 @@ public class Post {
 	@JsonBackReference
 	private User user;
 
-	@Column(columnDefinition = "TEXT")
-	private String content;
+	@Column(length = 255)
+	private String title;
 
-	@Column(name = "video", length = 255)
-	private String video;
+	@Column(columnDefinition = "TEXT")
+	private String description;
+
+	@Column(name = "video_url", length = 255)
+	private String videoUrl;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "audio_id")

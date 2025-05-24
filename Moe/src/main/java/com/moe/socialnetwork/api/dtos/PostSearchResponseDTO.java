@@ -8,7 +8,7 @@ import lombok.Data;
 public class PostSearchResponseDTO {
     private String image;
     private String displayName;
-    private String content;
-    private String postId;
-    private String video;
+    private String title;
+    private String postCode;
+    private String videoUrl;
 }

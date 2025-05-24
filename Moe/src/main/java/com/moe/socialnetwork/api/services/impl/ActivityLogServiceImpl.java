@@ -2,19 +2,19 @@ package com.moe.socialnetwork.api.services.impl;
 
 import org.springframework.stereotype.Service;
 
+import com.moe.socialnetwork.common.jpa.ActivityLogJpa;
 import com.moe.socialnetwork.common.models.ActivityLog;
 import com.moe.socialnetwork.common.models.ActivityLog.LogActionType;
 import com.moe.socialnetwork.common.models.ActivityLog.LogTargetType;
 import com.moe.socialnetwork.common.models.User;
-import com.moe.socialnetwork.common.repositories.ActivityLogRepository;
 
 
 @Service
 public class ActivityLogServiceImpl {
 
-    private ActivityLogRepository activityLogJPA;
+    private ActivityLogJpa activityLogJPA;
 
-    public ActivityLogServiceImpl(ActivityLogRepository activityLogJPA) {
+    public ActivityLogServiceImpl(ActivityLogJpa activityLogJPA) {
         this.activityLogJPA = activityLogJPA;
     }
 
