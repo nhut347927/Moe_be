@@ -40,9 +40,6 @@ public class PostServiceImpl implements IPostService {
 	private final ImageJpa imageJPA;
 	private final CloudinaryServiceImpl cloudinaryService;
 
-	@Value("${max.posts}")
-	private int maxPosts;
-
 	public PostServiceImpl(PostJpa postJPA, AudioJpa audioJPA, ImageJpa imageJPA,
 			CloudinaryServiceImpl cloudinaryService) {
 		this.postJPA = postJPA;

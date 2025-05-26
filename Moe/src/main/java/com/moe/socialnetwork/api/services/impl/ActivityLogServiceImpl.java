@@ -12,7 +12,7 @@ import com.moe.socialnetwork.common.models.User;
 @Service
 public class ActivityLogServiceImpl {
 
-    private ActivityLogJpa activityLogJPA;
+    private final ActivityLogJpa activityLogJPA;
 
     public ActivityLogServiceImpl(ActivityLogJpa activityLogJPA) {
         this.activityLogJPA = activityLogJPA;

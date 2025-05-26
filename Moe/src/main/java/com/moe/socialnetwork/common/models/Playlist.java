@@ -106,18 +106,11 @@ public class Playlist {
 		LocalDateTime now = LocalDateTime.now();
 		this.createdAt = now;
 		this.updatedAt = now;
+		this.code = UUID.randomUUID();
 	}
 
 	@PreUpdate
 	protected void onUpdate() {
 		this.updatedAt = LocalDateTime.now();
 	}
-
-	@PrePersist
-	public void prePersist() {
-		if (code == null) {
-			code = UUID.randomUUID();
-		}
-	}
-
 }

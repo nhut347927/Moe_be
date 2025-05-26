@@ -18,13 +18,12 @@ import com.moe.socialnetwork.api.dtos.PostSearchResponseDTO;
 import com.moe.socialnetwork.api.services.IPostService;
 import com.moe.socialnetwork.common.models.User;
 import com.moe.socialnetwork.common.response.ResponseAPI;
-import com.moe.socialnetwork.exception.AppException;
 
 @RestController
 @RequestMapping("/api/post")
 public class PostController {
 
-    private IPostService postService;
+    private final IPostService postService;
 
     public PostController(IPostService postService) {
         this.postService = postService;
@@ -47,12 +46,12 @@ public class PostController {
     @PostMapping("/create-new-post")
     public ResponseEntity<ResponseAPI<String>> createNewPost(
             @AuthenticationPrincipal User user,
-            @RequestPart(value = "videoFile", required = false) MultipartFile videoFile,
-            @RequestPart(value = "imageFile", required = false) List<MultipartFile> imageFile,
-            @RequestPart(value = "title", required = false) String title,
-            @RequestPart(value = "description", required = false) String description,
-            @RequestPart(value = "useOtherAudio", required = false) String useOtherAudio,
-            @RequestPart(value = "postId", required = false) String postId) {
+            @RequestPart(value = "videoFile", required = false) MultipartFile videoFile, // videoFile -> videoPublicId
+            @RequestPart(value = "imageFile", required = false) List<MultipartFile> imageFile, // imageFile -> imgList
+            @RequestPart(value = "title", required = false) String title, // .
+            @RequestPart(value = "description", required = false) String description, // .
+            @RequestPart(value = "useOtherAudio", required = false) String useOtherAudio, // . chưa biết
+            @RequestPart(value = "postId", required = false) String postId) { // chưa biết
         ResponseAPI<String> response = new ResponseAPI<>();
 
         if (user == null) {

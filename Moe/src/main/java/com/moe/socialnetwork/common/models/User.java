@@ -203,32 +203,14 @@ public class User implements UserDetails {
 		LocalDateTime now = LocalDateTime.now();
 		this.createdAt = now;
 		this.updatedAt = now;
+		this.code = UUID.randomUUID();
+		this.gender = Gender.NOT_UPDATED_YET;
+		this.provider = "NORMAL";
 	}
 
 	@PreUpdate
 	protected void onUpdate() {
 		this.updatedAt = LocalDateTime.now();
-	}
-
-	@PrePersist
-	public void prePersist() {
-		if (code == null) {
-			code = UUID.randomUUID();
-		}
-	}
-
-	@PrePersist
-	public void preGender() {
-		if (gender == null) {
-			gender = Gender.NOT_UPDATED_YET;
-		}
-	}
-
-	@PrePersist
-	public void preProvider() {
-		if (provider == null) {
-			provider = "NORMAL";
-		}
 	}
 
 	@Override

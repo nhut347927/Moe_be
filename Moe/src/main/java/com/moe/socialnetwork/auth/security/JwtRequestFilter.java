@@ -32,9 +32,6 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     @Autowired
     private TokenServiceImpl tokenService;
 
-    @Value("${app.expiration}")
-    private Long jwtExpirationMs;
-
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
             @NonNull FilterChain chain)

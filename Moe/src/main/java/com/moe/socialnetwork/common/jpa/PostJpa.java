@@ -11,7 +11,7 @@ import com.moe.socialnetwork.common.models.Post;
 
 public interface PostJpa extends JpaRepository<Post, Long> {
 
-	@Query("SELECT p FROM Post p JOIN p.user u LEFT JOIN p.audio a WHERE p.isDeleted = false AND p.type = 'VIDEO' AND a IS NULL AND (p.content LIKE %:keyword% OR u.displayName LIKE %:keyword%)")
+	@Query("SELECT p FROM Post p JOIN p.user u LEFT JOIN p.audio a WHERE p.isDeleted = false AND p.type = 'VIDEO' AND a IS NULL AND (p.title LIKE %:keyword% OR u.displayName LIKE %:keyword%)")
 	List<Post> findByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
   // Lấy top 25 tagId mà user đã like

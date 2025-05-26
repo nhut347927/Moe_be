@@ -66,13 +66,8 @@ public class ActivityLog {
 	@PrePersist
 	protected void onCreate() {
 		this.createdAt = LocalDateTime.now();
-	}
+		this.code = UUID.randomUUID();
 
-	@PrePersist
-	public void prePersist() {
-		if (code == null) {
-			code = UUID.randomUUID();
-		}
 	}
 
 	public enum LogActionType {

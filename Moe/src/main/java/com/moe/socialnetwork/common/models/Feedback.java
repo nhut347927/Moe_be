@@ -59,16 +59,10 @@ public class Feedback {
 	@PrePersist
 	protected void onCreate() {
 		this.createdAt = LocalDateTime.now();
+		this.code = UUID.randomUUID();
 	}
 
 	public enum FeedbackStatus {
 		UNRESOLVED, RESOLVED, IN_PROGRESS
-	}
-
-	@PrePersist
-	public void prePersist() {
-		if (code == null) {
-			code = UUID.randomUUID();
-		}
 	}
 }

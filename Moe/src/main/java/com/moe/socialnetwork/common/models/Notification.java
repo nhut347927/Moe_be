@@ -62,12 +62,6 @@ public class Notification {
 	@PrePersist
 	protected void onCreate() {
 		this.createdAt = LocalDateTime.now();
-	}
-
-	@PrePersist
-	public void prePersist() {
-		if (code == null) {
-			code = UUID.randomUUID();
-		}
+		this.code = UUID.randomUUID();
 	}
 }

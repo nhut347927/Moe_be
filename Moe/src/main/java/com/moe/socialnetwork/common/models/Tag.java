@@ -62,16 +62,10 @@ public class Tag {
 	protected void onCreate() {
 		LocalDateTime now = LocalDateTime.now();
 		this.createdAt = now;
+		this.code = UUID.randomUUID();
 	}
 
 	public void incrementUsageCount() {
 		this.usageCount++;
-	}
-
-	@PrePersist
-	public void prePersist() {
-		if (code == null) {
-			code = UUID.randomUUID();
-		}
 	}
 }
