@@ -57,6 +57,9 @@ public class Post {
 	@Column(name = "video_url", length = 255)
 	private String videoUrl;
 
+	@Column(name = "video_thumbnail", length = 255)
+	private String videoThumbnail;
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "audio_id")
 	@JsonBackReference(value = "audio-post")
@@ -92,10 +95,6 @@ public class Post {
 	@JoinColumn(name = "user_delete", insertable = false, updatable = false)
 	@JsonBackReference
 	private User userDelete;
-
-	@OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
-	@JsonManagedReference
-	private List<PostPlaylist> postStories;
 
 	@OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference

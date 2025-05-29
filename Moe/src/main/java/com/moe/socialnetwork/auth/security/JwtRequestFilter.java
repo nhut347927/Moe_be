@@ -41,6 +41,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
         String jwt = extractToken(request);
 
         // Skip token validation for public endpoints
+        System.out.println("Request URI: " + request.getRequestURI());
         if (isPublicEndpoint(request)) {
             chain.doFilter(request, response);
             return;
@@ -111,7 +112,11 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                 path.startsWith("/api/auth//password-reset-request") ||
                 path.startsWith("/api/auth/password-reset") ||
                 path.startsWith("/api/auth/refresh-token") ||
-                path.startsWith("/api/auth//logout");
+                path.startsWith("/api/auth/logout")||
+                path.startsWith("/api/file/upload-image") ||
+                path.startsWith("/api/file/upload-video") ||
+                path.startsWith("/api/file/upload-audio") ||
+                path.startsWith("/api/file/upload-any");
     }
 
     private void sendErrorResponse(HttpServletResponse response, String message, int statusCode) throws IOException {

@@ -29,6 +29,12 @@ public class SecurityConfig {
                 .cors(cors -> {
                 })
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/google-login",
+                                "/api/auth//change-password", "/api/auth//password-reset-request",
+                                "/api/auth/password-reset", "/api/auth/refresh-token", "/api/auth//logout",
+                                "api/file/upload-image", "api/file/upload-video", "/api/file/upload-audio",
+                                "/api/file/upload-any")
+                        .permitAll()
                         .requestMatchers("/api/upload/image").hasAuthority("ADMIN_INSERT") // demo
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class)

@@ -1,33 +1,34 @@
 package com.moe.socialnetwork.api.services.impl;
 
 import java.io.File;
-import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Pageable;
-import org.springframework.web.multipart.MultipartFile;
-
+import com.moe.socialnetwork.api.dtos.PostCreateRepuestDTO;
 import com.moe.socialnetwork.api.dtos.PostResponseDTO;
 import com.moe.socialnetwork.api.dtos.PostSearchResponseDTO;
+import com.moe.socialnetwork.api.dtos.PostCreateRepuestDTO.FFmpegMergeParams;
+import com.moe.socialnetwork.api.services.IFFmpegService;
 import com.moe.socialnetwork.api.services.IPostService;
 import com.moe.socialnetwork.common.jpa.AudioJpa;
 import com.moe.socialnetwork.common.jpa.ImageJpa;
 import com.moe.socialnetwork.common.jpa.PostJpa;
+import com.moe.socialnetwork.common.jpa.TagJpa;
 import com.moe.socialnetwork.common.models.Audio;
 import com.moe.socialnetwork.common.models.Image;
 import com.moe.socialnetwork.common.models.Playlist;
 import com.moe.socialnetwork.common.models.Post;
 import com.moe.socialnetwork.common.models.PostPlaylist;
+import com.moe.socialnetwork.common.models.PostTag;
+import com.moe.socialnetwork.common.models.Tag;
 import com.moe.socialnetwork.common.models.User;
 import com.moe.socialnetwork.common.models.UserPlaylist;
 import com.moe.socialnetwork.exception.AppException;
@@ -36,16 +37,122 @@ import com.moe.socialnetwork.exception.AppException;
 public class PostServiceImpl implements IPostService {
 
 	private final PostJpa postJPA;
+	private final IFFmpegService ffmpegService;
+	private final TagJpa tagJPA;
 	private final AudioJpa audioJPA;
 	private final ImageJpa imageJPA;
 	private final CloudinaryServiceImpl cloudinaryService;
 
-	public PostServiceImpl(PostJpa postJPA, AudioJpa audioJPA, ImageJpa imageJPA,
-			CloudinaryServiceImpl cloudinaryService) {
+	public PostServiceImpl(PostJpa postJPA, TagJpa tagJPA, AudioJpa audioJPA, ImageJpa imageJPA,
+			CloudinaryServiceImpl cloudinaryService, IFFmpegService ffmpegService) {
 		this.postJPA = postJPA;
+		this.tagJPA = tagJPA;
 		this.audioJPA = audioJPA;
 		this.imageJPA = imageJPA;
 		this.cloudinaryService = cloudinaryService;
+		this.ffmpegService = ffmpegService;
+	}
+
+	public Boolean createNewPost(PostCreateRepuestDTO dto, User user) {
+		// 1. Create post
+		Post post = new Post();
+		post.setUser(user);
+		post.setTitle(dto.getTitle());
+		post.setDescription(dto.getDescription());
+		post.setType("VID".equals(dto.getPostType()) ? Post.PostType.VIDEO : Post.PostType.IMAGE);
+		post.setIsDeleted(false);
+		post.setCreatedAt(LocalDateTime.now());
+		post.setVideoThumbnail(String.valueOf(dto.getVideoThumbnail() != null ? dto.getVideoThumbnail() : 0));
+
+		// 2. Handle tagList
+		if (dto.getTagList() != null) {
+			for (String tagName : dto.getTagList()) {
+				Tag tag = tagJPA.findByName(tagName).orElseGet(() -> {
+					Tag newTag = new Tag();
+					newTag.setName(tagName);
+					return tagJPA.save(newTag);
+				});
+				PostTag postTag = new PostTag();
+				postTag.setPost(post);
+				postTag.setTag(tag);
+				post.getPostTags().add(postTag);
+			}
+		}
+
+		// 3. Handle postType
+		if ("VID".equals(dto.getPostType())) {
+			// 3.1 No extra audio
+			if (Boolean.FALSE.equals(dto.getIsUseOtherAudio())) {
+				post.setVideoUrl(dto.getVideoPublicId());
+				post.setVideoThumbnail(String.valueOf(dto.getVideoThumbnail()));
+				File videoFile = ffmpegService.downloadFileFromCloudinary(dto.getVideoPublicId(),
+									"audio.mp3", "video"); // đúng ra ở đây sử dụng type audio nhưng cloudinary nhận
+															// audio là video
+				try {
+					File audioFile = ffmpegService.extractAudioFromVideo(videoFile);
+					String audioPublicId = cloudinaryService.uploadAudio(audioFile);
+					Audio audioPost = new Audio();
+					audioPost.setAudioName(audioPublicId);
+					audioPost.setOwnerPost(post);
+					audioJPA.save(audioPost);
+				} catch (java.io.IOException e) {
+					throw new AppException("Failed to extract audio from video: " + e.getMessage(), 500);
+				}
+			} else {
+				// 3.2 Has extra audio
+				if (dto.getFfmpegMergeParams() == null || dto.getAudioCode() == null) {
+					throw new AppException(
+							"ffmpegCommand and postCodeByAudio must not be null when using external audio", 400);
+				}
+				// Load audio post
+				Audio audioPost = audioJPA.findAudioByCode(dto.getAudioCode())
+						.orElseThrow(() -> new AppException("Audio post not found with provided postCode", 404));
+				post.setAudio(audioPost);
+
+				// audio code -> audioPublicId
+				FFmpegMergeParams ffmpegParams = dto.getFfmpegMergeParams();
+				ffmpegParams.setAudioPublicId(audioPost.getAudioName());
+				ffmpegParams.setVideoPublicId(dto.getVideoPublicId());
+
+				// Mock FFmpeg processing logic
+				try {
+					String vidPublicId = ffmpegService.mergeAndUpload(ffmpegParams);
+					String oldVidPublicId = post.getVideoUrl();
+					post.setVideoUrl(vidPublicId);
+					cloudinaryService.deleteFile(oldVidPublicId);
+				} catch (Exception e) {
+					throw new AppException("Failed to process video with audio: " + e.getMessage(), 500);
+				}
+			}
+
+		} else if ("IMG".equals(dto.getPostType())) {
+			if (dto.getAudioCode() == null) {
+				throw new AppException("postCodeByAudio is required for image posts", 400);
+			}
+
+			// Set audio from another post
+			Audio audioPost = audioJPA.findAudioByCode(dto.getAudioCode())
+					.orElseThrow(() -> new AppException("Audio post not found with provided postCode", 404));
+			post.setAudio(audioPost);
+
+			// Save images
+
+			if (dto.getImgList() != null && !dto.getImgList().isEmpty()) {
+				for (String imgName : dto.getImgList()) {
+					Image image = new Image();
+					image.setPost(post);
+					image.setImageName(imgName);
+					imageJPA.save(image);
+				}
+			} else {
+				throw new AppException("imgList must not be empty for image posts", 400);
+			}
+
+		}
+
+		// 4. Save post
+		postJPA.save(post);
+		return true;
 	}
 
 	@Override
@@ -68,143 +175,6 @@ public class PostServiceImpl implements IPostService {
 		}
 
 		return response;
-	}
-
-	@Override
-	public void createNewPost(MultipartFile videoFile, List<MultipartFile> imageFile, String title, String description,
-			boolean useOtherAudio, Long postId, User user) throws IOException {
-		if (title == null || title.isEmpty()) {
-			throw new AppException("Content must not be empty.", 400);
-		}
-		if (useOtherAudio && postId == null) {
-			throw new AppException("Post ID must be provided when using other audio.", 400);
-		}
-		if (videoFile.getSize() > 1024L * 1024 * 1024) { // 1GB = 1024MB = 1024 * 1024 * 1024 bytes hậu tố L khi vượt
-															// quá giới hạn của int
-			throw new AppException("Video file size exceeds the limit of 1GB.", 400);
-		}
-
-		try {
-			boolean hasVideo = videoFile != null && !videoFile.isEmpty();
-			boolean hasImages = imageFile != null && !imageFile.isEmpty()
-					&& !imageFile.get(0).isEmpty(); // Kiểm tra xem phần tử đầu tiên có rỗng không
-
-			if ((!hasVideo && !hasImages) || (hasVideo && hasImages)) {
-				throw new AppException("Post must contain either a video or images.", 400);
-			}
-
-			Post post = null;
-			Audio audio = null;
-
-			if (postId != null) {
-
-				post = postJPA.findById(postId)
-						.orElseThrow(() -> new AppException("Post not found", 404));
-				audio = audioJPA.findAudioByOwnerPostId(postId);
-			}
-
-			Post create = new Post();
-			create.setUser(user);
-			create.setTitle(title);
-			create.setDescription(description);
-			create.setAudio(null);
-
-			boolean isUpImage = false;
-
-			if (audio != null) {
-
-				if (hasVideo && !hasImages) {
-					if (useOtherAudio) {
-						try {
-							File videoTemp = cloudinaryService.convertMultipartToFile(videoFile, "video.mp4");
-							File audioTemp = cloudinaryService.downloadFileFromCloudinary(audio.getAudioName(),
-									"audio.mp3", "video"); // đúng ra ở đây sử dụng type audio nhưng cloudinary nhận
-															// audio là video
-							File mergedVideo = cloudinaryService.mergeVideoWithAudio(videoTemp, audioTemp);
-							String vidPublicUrl = cloudinaryService.uploadVideo(mergedVideo);
-
-							create.setVideoUrl(vidPublicUrl);
-						} catch (Exception e) {
-							throw new AppException("Failed to process video with audio: " + e.getMessage(), 500);
-						}
-					} else {
-						String vidPublicUrl = cloudinaryService.uploadVideo(videoFile);
-						create.setVideoUrl(vidPublicUrl);
-					}
-					create.setAudio(audio);
-					create.setType(Post.PostType.VIDEO);
-				} else if (!hasVideo && hasImages) {
-					create.setAudio(audio);
-					create.setType(Post.PostType.IMAGE);
-					isUpImage = true;
-				}
-			} else {
-				if (hasVideo && !hasImages) {
-					if (useOtherAudio) {
-						try {
-							File originalVideo = cloudinaryService.downloadFileFromCloudinary(post.getVideoUrl(),
-									"original.mp4", "video");
-							File extractedAudio = cloudinaryService.extractAudioFromVideo(originalVideo);
-							String audioPublicUrl = cloudinaryService.uploadAudio(extractedAudio);
-							File videoTemp = cloudinaryService.convertMultipartToFile(videoFile, "video.mp4");
-							File mergedVideo = cloudinaryService.mergeVideoWithAudio(videoTemp, extractedAudio);
-							String videoPublicUrl = cloudinaryService.uploadVideo(mergedVideo);
-
-							Audio newAudio = new Audio();
-							newAudio.setAudioName(audioPublicUrl);
-							newAudio.setOwnerPost(post);
-							audioJPA.save(newAudio);
-							create.setAudio(newAudio);
-							create.setVideoUrl(videoPublicUrl);
-						} catch (Exception e) {
-							throw new AppException("Failed to process video with extracted audio: " + e.getMessage(),
-									500);
-						}
-					} else {
-						create.setAudio(null);
-						String vidPublicUrl = cloudinaryService.uploadVideo(videoFile);
-						create.setVideoUrl(vidPublicUrl);
-					}
-					create.setType(Post.PostType.VIDEO); // ✅ Đảm bảo luôn set type
-				} else if (!hasVideo && hasImages) {
-					if (post != null) {
-						try {
-							File originalVideo = cloudinaryService.downloadFileFromCloudinary(post.getVideoUrl(),
-									"original.mp4", "video");
-							File extractedAudio = cloudinaryService.extractAudioFromVideo(originalVideo);
-							String audioPublicUrl = cloudinaryService.uploadAudio(extractedAudio);
-
-							Audio newAudio = new Audio();
-							newAudio.setAudioName(audioPublicUrl);
-							newAudio.setOwnerPost(post);
-							audioJPA.save(newAudio);
-							create.setAudio(newAudio);
-						} catch (Exception e) {
-							throw new AppException("Failed to extract audio from video: " + e.getMessage(), 500);
-						}
-					}
-					create.setType(Post.PostType.IMAGE); // ✅ Đảm bảo luôn set type
-					isUpImage = true;
-				}
-			}
-
-			postJPA.save(create);
-
-			if (imageFile != null && !imageFile.isEmpty()
-					&& !imageFile.get(0).isEmpty()) {
-				if (isUpImage) {
-					for (MultipartFile image : imageFile) {
-						Image imageSave = new Image();
-						String imgUrl = cloudinaryService.uploadImage(image);
-						imageSave.setPost(create);
-						imageSave.setImageName(imgUrl);
-						imageJPA.save(imageSave);
-					}
-				}
-			}
-		} catch (Exception e) {
-			throw new AppException("Error creating new post: " + e.getMessage(), 500);
-		}
 	}
 
 	@Override
