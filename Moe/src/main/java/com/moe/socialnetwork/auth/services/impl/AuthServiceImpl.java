@@ -88,7 +88,7 @@ public class AuthServiceImpl implements IAuthService {
                 .orElseThrow(() -> new AppException("Email is not registered", HttpStatus.NOT_FOUND.value()));
 
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
-            throw new AppException("Invalid password", HttpStatus.UNAUTHORIZED.value());
+            throw new AppException("Email or password is incorrect", HttpStatus.UNAUTHORIZED.value());
         }
 
         return buildLoginResponse(user);

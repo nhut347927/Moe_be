@@ -69,6 +69,10 @@ public class Post {
 	@Column(name = "type", nullable = false)
 	private PostType type;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "visibility", nullable = false)
+	private Visibility visibility;
+
 	@Column(name = "is_deleted", columnDefinition = "boolean default false")
 	private Boolean isDeleted = false;
 
@@ -142,9 +146,14 @@ public class Post {
 		this.updatedAt = LocalDateTime.now();
 	}
 
+	public enum Visibility {
+		PRIVATE,
+		PUBLIC
+	}
+
 	public enum PostType {
-		IMAGE, // Dành cho bài đăng là ảnh
-		VIDEO, // Dành cho bài đăng là video
+		IMG, // bài đăng là ảnh
+		VID, // đăng là video
 	}
 
 }

@@ -44,9 +44,9 @@ public class Tag {
 	private String name;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "user_id", nullable = false)
+	@JoinColumn(name = "user_create", insertable = false, updatable = false)
 	@JsonBackReference
-	private User user;
+	private User userCreate;
 
 	@OneToMany(mappedBy = "tag", cascade = CascadeType.ALL, orphanRemoval = true)
 	@JsonManagedReference

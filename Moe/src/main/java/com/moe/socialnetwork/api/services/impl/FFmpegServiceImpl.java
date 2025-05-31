@@ -4,6 +4,8 @@ import java.io.*;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Stream;
 
 import org.springframework.stereotype.Service;
 
@@ -22,7 +24,7 @@ public class FFmpegServiceImpl implements IFFmpegService {
 
     private final ICloudinaryService cloudinaryService;
     private final Cloudinary cloudinary;
-    private final String ffmpegPath = "src\\main\\resources\\ffmpeg-n6.1-latest-win64-lgpl-shared-6.1\\bin\\ffmpeg.exe";
+    private final String ffmpegPath = "ffmpeg";
 
     public FFmpegServiceImpl(ICloudinaryService cloudinaryService, Cloudinary cloudinary) {
         this.cloudinaryService = cloudinaryService;
@@ -31,68 +33,86 @@ public class FFmpegServiceImpl implements IFFmpegService {
 
     @Override
     public String mergeAndUpload(FFmpegMergeParams params) throws IOException, InterruptedException {
-        String videoInput = getFileUrl(params.getVideoPublicId(), "video");
-        String audioInput = getFileUrl(params.getAudioPublicId(), "video");
+        // 1. Tải về file local
+        File downloadedVideo = downloadFileFromCloudinary(params.getVideoPublicId(), "video.mp4", "video");
+        File downloadedAudio = downloadFileFromCloudinary(params.getAudioPublicId(), "audio.mp3", "video");
 
+        // 2. Tạo file tạm
         File trimmedVideo = File.createTempFile("video_trimmed", ".mp4");
         File trimmedAudio = File.createTempFile("audio_trimmed", ".aac");
         File adjustedAudio = File.createTempFile("audio_adjusted", ".aac");
         File mergedOutput = File.createTempFile("merged_output", ".mp4");
 
-        // Trim video
-        runProcess(new ProcessBuilder(
-                ffmpegPath, "-i", videoInput,
-                "-ss", String.valueOf(params.getVideoCutStart()),
-                "-to", String.valueOf(params.getVideoCutEnd()),
-                "-c", "copy",
-                trimmedVideo.getAbsolutePath()));
+        try {
+            // === Trim video chính xác & giữ audio gốc ===
+            runProcess(new ProcessBuilder(
+                    ffmpegPath, "-y",
+                    "-ss", String.valueOf(params.getVideoCutStart()),
+                    "-to", String.valueOf(params.getVideoCutEnd()),
+                    "-i", downloadedVideo.getAbsolutePath(),
+                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+                    "-c:a", "aac", "-b:a", "128k", // giữ audio gốc trong video
+                    trimmedVideo.getAbsolutePath()));
 
-        // Trim audio
-        runProcess(new ProcessBuilder(
-                ffmpegPath, "-i", audioInput,
-                "-ss", String.valueOf(params.getAudioCutStart()),
-                "-to", String.valueOf(params.getAudioCutEnd()),
-                "-c", "copy",
-                trimmedAudio.getAbsolutePath()));
+            // === Trim audio ===
+            runProcess(new ProcessBuilder(
+                    ffmpegPath, "-y", "-i", downloadedAudio.getAbsolutePath(),
+                    "-ss", String.valueOf(params.getAudioCutStart()),
+                    "-to", String.valueOf(params.getAudioCutEnd()),
+                    "-c:a", "aac", "-b:a", "128k",
+                    trimmedAudio.getAbsolutePath()));
 
-        // Adjust audio
-        String audioFilter = String.format("adelay=%d|%d,volume=%f",
-                params.getAudioOffset() * 1000,
-                params.getAudioOffset() * 1000,
-                params.getAudioVolume() != null ? params.getAudioVolume() : 1.0);
+            // === Điều chỉnh âm lượng & delay cho audio phụ ===
+            String audioFilter;
+            double audioVolume = params.getAudioVolume() != null ? params.getAudioVolume() : 1.0;
+            double offsetMs = params.getAudioOffset() != null ? params.getAudioOffset() * 1000 : 0;
 
-        runProcess(new ProcessBuilder(
-                ffmpegPath, "-i", trimmedAudio.getAbsolutePath(),
-                "-af", audioFilter,
-                "-c:a", "aac",
-                adjustedAudio.getAbsolutePath()));
+            if (offsetMs > 0) {
+                audioFilter = String.format(Locale.US, "adelay=%.3f|%.3f,volume=%.3f", offsetMs, offsetMs, audioVolume);
+            } else {
+                audioFilter = String.format(Locale.US, "volume=%.3f", audioVolume);
+            }
 
-        // Merge video & adjusted audio
-        List<String> mergeCmd = new ArrayList<>(List.of(
-                ffmpegPath,
-                "-i", trimmedVideo.getAbsolutePath(),
-                "-i", adjustedAudio.getAbsolutePath(),
-                "-c:v", "copy",
-                "-c:a", "aac"));
+            runProcess(new ProcessBuilder(
+                    ffmpegPath, "-y", "-i", trimmedAudio.getAbsolutePath(),
+                    "-af", audioFilter,
+                    "-ac", "2",
+                    "-c:a", "aac",
+                    adjustedAudio.getAbsolutePath()));
 
-        if (params.getVideoVolume() != null && params.getVideoVolume() != 1.0) {
-            mergeCmd.add("-filter:v");
-            mergeCmd.add(String.format("volume=%f", params.getVideoVolume()));
+            // === Trộn audio phụ và audio của video gốc ===
+            double videoVolume = params.getVideoVolume() != null ? params.getVideoVolume() : 1.0;
+
+            String filterComplex = String.format(Locale.US,
+                    "[0:a]volume=%.3f[a0];[1:a]volume=1.0[a1];[a0][a1]amix=inputs=2:duration=first:dropout_transition=3[aout]",
+                    videoVolume);
+
+            List<String> mergeCmd = new ArrayList<>(List.of(
+                    ffmpegPath, "-y",
+                    "-i", trimmedVideo.getAbsolutePath(), // 0: video + audio gốc
+                    "-i", adjustedAudio.getAbsolutePath(), // 1: audio phụ
+                    "-filter_complex", filterComplex,
+                    "-map", "0:v:0",
+                    "-map", "[aout]",
+                    "-c:v", "libx264",
+                    "-c:a", "aac",
+                    mergedOutput.getAbsolutePath()));
+
+            runProcess(new ProcessBuilder(mergeCmd));
+
+            // === Upload kết quả lên Cloudinary ===
+            return cloudinaryService.uploadVideo(mergedOutput);
+
+        } finally {
+            // === Xoá các file tạm ===
+            Stream.of(
+                    downloadedVideo, downloadedAudio,
+                    trimmedVideo, trimmedAudio,
+                    adjustedAudio, mergedOutput).forEach(f -> {
+                        if (f != null && f.exists())
+                            f.delete();
+                    });
         }
-
-        mergeCmd.add(mergedOutput.getAbsolutePath());
-        runProcess(new ProcessBuilder(mergeCmd));
-
-        // Upload lên Cloudinary
-        String publicId = cloudinaryService.uploadVideo(mergedOutput);
-
-        // Cleanup
-        trimmedVideo.delete();
-        trimmedAudio.delete();
-        adjustedAudio.delete();
-        mergedOutput.delete();
-
-        return publicId;
     }
 
     private void runProcess(ProcessBuilder pb) throws IOException, InterruptedException {

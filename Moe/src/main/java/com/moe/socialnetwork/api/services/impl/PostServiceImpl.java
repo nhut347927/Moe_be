@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.PageRequest;
@@ -21,21 +22,20 @@ import com.moe.socialnetwork.api.services.IPostService;
 import com.moe.socialnetwork.common.jpa.AudioJpa;
 import com.moe.socialnetwork.common.jpa.ImageJpa;
 import com.moe.socialnetwork.common.jpa.PostJpa;
+import com.moe.socialnetwork.common.jpa.PostTagJpa;
 import com.moe.socialnetwork.common.jpa.TagJpa;
 import com.moe.socialnetwork.common.models.Audio;
 import com.moe.socialnetwork.common.models.Image;
-import com.moe.socialnetwork.common.models.Playlist;
 import com.moe.socialnetwork.common.models.Post;
-import com.moe.socialnetwork.common.models.PostPlaylist;
 import com.moe.socialnetwork.common.models.PostTag;
 import com.moe.socialnetwork.common.models.Tag;
 import com.moe.socialnetwork.common.models.User;
-import com.moe.socialnetwork.common.models.UserPlaylist;
 import com.moe.socialnetwork.exception.AppException;
 
 @Service
 public class PostServiceImpl implements IPostService {
 
+	private final PostTagJpa postTagJPA;
 	private final PostJpa postJPA;
 	private final IFFmpegService ffmpegService;
 	private final TagJpa tagJPA;
@@ -43,8 +43,9 @@ public class PostServiceImpl implements IPostService {
 	private final ImageJpa imageJPA;
 	private final CloudinaryServiceImpl cloudinaryService;
 
-	public PostServiceImpl(PostJpa postJPA, TagJpa tagJPA, AudioJpa audioJPA, ImageJpa imageJPA,
+	public PostServiceImpl(PostTagJpa postTagJPA, PostJpa postJPA, TagJpa tagJPA, AudioJpa audioJPA, ImageJpa imageJPA,
 			CloudinaryServiceImpl cloudinaryService, IFFmpegService ffmpegService) {
+		this.postTagJPA = postTagJPA;
 		this.postJPA = postJPA;
 		this.tagJPA = tagJPA;
 		this.audioJPA = audioJPA;
@@ -54,58 +55,50 @@ public class PostServiceImpl implements IPostService {
 	}
 
 	public Boolean createNewPost(PostCreateRepuestDTO dto, User user) {
-		// 1. Create post
+		Post save = null;
+		// Create post
 		Post post = new Post();
 		post.setUser(user);
 		post.setTitle(dto.getTitle());
 		post.setDescription(dto.getDescription());
-		post.setType("VID".equals(dto.getPostType()) ? Post.PostType.VIDEO : Post.PostType.IMAGE);
+		post.setType("VID".equals(dto.getPostType()) ? Post.PostType.VID : Post.PostType.IMG);
 		post.setIsDeleted(false);
 		post.setCreatedAt(LocalDateTime.now());
 		post.setVideoThumbnail(String.valueOf(dto.getVideoThumbnail() != null ? dto.getVideoThumbnail() : 0));
-
-		// 2. Handle tagList
-		if (dto.getTagList() != null) {
-			for (String tagName : dto.getTagList()) {
-				Tag tag = tagJPA.findByName(tagName).orElseGet(() -> {
-					Tag newTag = new Tag();
-					newTag.setName(tagName);
-					return tagJPA.save(newTag);
-				});
-				PostTag postTag = new PostTag();
-				postTag.setPost(post);
-				postTag.setTag(tag);
-				post.getPostTags().add(postTag);
-			}
-		}
-
-		// 3. Handle postType
+		post.setVisibility("PUBLIC".equals(dto.getVisibility()) ? Post.Visibility.PUBLIC : Post.Visibility.PRIVATE);
+		// Handle postType
 		if ("VID".equals(dto.getPostType())) {
-			// 3.1 No extra audio
+			// No extra audio
 			if (Boolean.FALSE.equals(dto.getIsUseOtherAudio())) {
 				post.setVideoUrl(dto.getVideoPublicId());
 				post.setVideoThumbnail(String.valueOf(dto.getVideoThumbnail()));
 				File videoFile = ffmpegService.downloadFileFromCloudinary(dto.getVideoPublicId(),
-									"audio.mp3", "video"); // đúng ra ở đây sử dụng type audio nhưng cloudinary nhận
-															// audio là video
+						"audio.mp3", "video"); // đúng ra ở đây sử dụng type audio nhưng cloudinary nhận
+												// audio là video
 				try {
 					File audioFile = ffmpegService.extractAudioFromVideo(videoFile);
 					String audioPublicId = cloudinaryService.uploadAudio(audioFile);
+					videoFile.delete(); // Xóa file video tạm sau khi trích xuất audio
+					audioFile.delete(); // Xóa file audio tạm sau khi upload
 					Audio audioPost = new Audio();
 					audioPost.setAudioName(audioPublicId);
-					audioPost.setOwnerPost(post);
+
+					save = postJPA.save(post);
+
+					audioPost.setOwnerPost(save);
 					audioJPA.save(audioPost);
 				} catch (java.io.IOException e) {
 					throw new AppException("Failed to extract audio from video: " + e.getMessage(), 500);
 				}
 			} else {
-				// 3.2 Has extra audio
-				if (dto.getFfmpegMergeParams() == null || dto.getAudioCode() == null) {
+				// Has extra audio
+				if (dto.getFfmpegMergeParams() == null || dto.getAudioCode() == null || dto.getAudioCode().isEmpty()) {
 					throw new AppException(
-							"ffmpegCommand and postCodeByAudio must not be null when using external audio", 400);
+							"ffmpegCommand and audioCode must not be null when using external audio", 400);
 				}
-				// Load audio post
-				Audio audioPost = audioJPA.findAudioByCode(dto.getAudioCode())
+				UUID audioCode = UUID.fromString(dto.getAudioCode());
+				// Set audio from another post
+				Audio audioPost = audioJPA.findAudioByCode(audioCode)
 						.orElseThrow(() -> new AppException("Audio post not found with provided postCode", 404));
 				post.setAudio(audioPost);
 
@@ -117,26 +110,29 @@ public class PostServiceImpl implements IPostService {
 				// Mock FFmpeg processing logic
 				try {
 					String vidPublicId = ffmpegService.mergeAndUpload(ffmpegParams);
-					String oldVidPublicId = post.getVideoUrl();
 					post.setVideoUrl(vidPublicId);
-					cloudinaryService.deleteFile(oldVidPublicId);
+					cloudinaryService.deleteFile(dto.getVideoPublicId());
+
+					save = postJPA.save(post);
 				} catch (Exception e) {
 					throw new AppException("Failed to process video with audio: " + e.getMessage(), 500);
 				}
 			}
 
 		} else if ("IMG".equals(dto.getPostType())) {
-			if (dto.getAudioCode() == null) {
-				throw new AppException("postCodeByAudio is required for image posts", 400);
+			if (dto.getAudioCode() == null || dto.getAudioCode().isEmpty()) {
+				throw new AppException("audioCode is required for image posts", 400);
 			}
 
+			UUID audioCode = UUID.fromString(dto.getAudioCode());
 			// Set audio from another post
-			Audio audioPost = audioJPA.findAudioByCode(dto.getAudioCode())
+			Audio audioPost = audioJPA.findAudioByCode(audioCode)
 					.orElseThrow(() -> new AppException("Audio post not found with provided postCode", 404));
 			post.setAudio(audioPost);
 
+			// save
+			save = postJPA.save(post);
 			// Save images
-
 			if (dto.getImgList() != null && !dto.getImgList().isEmpty()) {
 				for (String imgName : dto.getImgList()) {
 					Image image = new Image();
@@ -150,8 +146,31 @@ public class PostServiceImpl implements IPostService {
 
 		}
 
-		// 4. Save post
-		postJPA.save(post);
+		// Handle tagList
+		if (dto.getTagList() != null) {
+			for (String tagName : dto.getTagList()) {
+
+				// Tìm tag hoặc tạo mới
+				Tag tag = tagJPA.findByName(tagName).orElse(null);
+				if (tag == null) {
+					tag = new Tag();
+					tag.setName(tagName);
+					tag.setUserCreate(user);
+					tag.setUsageCount(1);
+					tag = tagJPA.save(tag);
+				} else {
+					tag.incrementUsageCount();
+					tag = tagJPA.save(tag);
+				}
+
+				// Luôn tạo PostTag liên kết
+				PostTag postTag = new PostTag();
+				postTag.setPost(save);
+				postTag.setTag(tag);
+				postTagJPA.save(postTag);
+			}
+		}
+
 		return true;
 	}
 
@@ -273,32 +292,23 @@ public class PostServiceImpl implements IPostService {
 		dto.setImageUrls(imageUrls);
 		dto.setLikeCount(String.valueOf(post.getLikes().size()));
 		dto.setCommentCount(String.valueOf(post.getComments().size()));
-		// Kiểm tra xem post này đã nằm trong bất kỳ playlist nào của user chưa
-		Boolean isInAnyPlaylist = false;
-		for (UserPlaylist userPlaylist : user.getUserPlaylists()) {
-			Playlist playlist = userPlaylist.getPlaylist();
-			if (playlist != null) {
-				for (PostPlaylist postPlaylist : playlist.getPostPlaylists()) {
-					if (postPlaylist.getPost().getId().equals(post.getId())) {
-						isInAnyPlaylist = true;
-						break;
-					}
-				}
-			}
-		}
+
+		Boolean isInAnyPlaylist = postJPA.existsPostInAnyUserPlaylist(user.getId(), post.getId());
 		dto.setIsAddPlaylist(isInAnyPlaylist);
 
-		// Kiểm tra nếu audio không null trước khi truy cập các thuộc tính của nó
 		if (post.getAudio() != null && post.getAudio().getOwnerPost() != null) {
 			dto.setAudioUrl(post.getAudio().getAudioName());
 			dto.setAudioOwnerAvatar(post.getAudio().getOwnerPost().getUser().getAvatar());
 			dto.setAudioOwnerDisplayName(post.getAudio().getOwnerPost().getUser().getDisplayName());
 			dto.setAudioCode(String.valueOf(post.getAudio().getId()));
 		} else {
-			dto.setAudioUrl(null);
-			dto.setAudioOwnerAvatar(null);
-			dto.setAudioOwnerDisplayName(null);
-			dto.setAudioCode(null);
+			// if post does not have audio, it means it uses default audio
+			Audio defaultAudio = audioJPA.findAudioByOwnerPostId(post.getId());
+
+			dto.setAudioUrl(defaultAudio.getAudioName());
+			dto.setAudioOwnerAvatar(user.getAvatar());
+			dto.setAudioOwnerDisplayName(user.getDisplayName());
+			dto.setAudioCode(defaultAudio.getCode().toString());
 		}
 
 		dto.setComments(null);

@@ -1,14 +1,14 @@
-# Use an official OpenJDK runtime as a parent image
-FROM openjdk:11-jre-slim
+FROM openjdk:17-jdk-slim
 
-# Install FFmpeg
-RUN apt-get update && apt-get install -y ffmpeg
+# Cài đặt ffmpeg
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
-# Set the working directory in the container
+# Tạo thư mục app và copy file JAR
 WORKDIR /app
+COPY target/social-network.jar app.jar
 
-# Copy the project files to the container
-COPY . /app
+# Port ứng dụng
+EXPOSE 8080
 
-# Specify the command to run the application
-CMD ["java", "-jar", "target/your-application.jar"]
+# Chạy ứng dụng
+ENTRYPOINT ["java", "-jar", "moe.jar"]
