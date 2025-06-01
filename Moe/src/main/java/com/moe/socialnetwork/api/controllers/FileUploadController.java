@@ -1,5 +1,6 @@
 package com.moe.socialnetwork.api.controllers;
 
+import com.moe.socialnetwork.api.dtos.FileUploadRequestDTO;
 import com.moe.socialnetwork.api.services.ICloudinaryService;
 import com.moe.socialnetwork.api.services.impl.CloudinaryServiceImpl;
 import com.moe.socialnetwork.common.response.ResponseAPI;
@@ -20,47 +21,24 @@ public class FileUploadController {
         this.cloudinaryService = cloudinaryService;
     }
 
-    // Upload ảnh
-    @PostMapping("/upload-image")
-    public ResponseEntity<ResponseAPI<String>> uploadImage(@RequestParam("file") MultipartFile file)
-            throws IOException {
-        String publicId = cloudinaryService.uploadImage(file);
-        ResponseAPI<String> response = new ResponseAPI<>();
-        response.setCode(200);
-        response.setMessage("Upload successful");
-        response.setData(publicId);
-        return ResponseEntity.ok(response);
-    }
+    // API upload file tổng hợp
+    @PostMapping("/upload")
+    public ResponseEntity<ResponseAPI<String>> uploadFile(
+            @ModelAttribute FileUploadRequestDTO request) throws IOException {
+        String type = request.getType();
+        MultipartFile file = request.getFile();
+        String publicId;
 
-    // Upload video
-    @PostMapping("/upload-video")
-    public ResponseEntity<ResponseAPI<String>> uploadVideo(@RequestParam("file") MultipartFile file)
-            throws IOException {
-        String publicId = cloudinaryService.uploadVideo(file);
-        ResponseAPI<String> response = new ResponseAPI<>();
-        response.setCode(200);
-        response.setMessage("Upload successful");
-        response.setData(publicId);
-        return ResponseEntity.ok(response);
-    }
+        if ("image".equalsIgnoreCase(type)) {
+            publicId = cloudinaryService.uploadImage(file);
+        } else if ("video".equalsIgnoreCase(type)) {
+            publicId = cloudinaryService.uploadVideo(file);
+        } else if ("audio".equalsIgnoreCase(type)) {
+            publicId = cloudinaryService.uploadAudio(file);
+        } else {
+            publicId = cloudinaryService.uploadAnyFile(file);
+        }
 
-    // Upload audio/file bất kỳ
-    @PostMapping("/upload-audio")
-    public ResponseEntity<ResponseAPI<String>> uploadAudio(@RequestParam("file") MultipartFile file)
-            throws IOException {
-        String publicId = cloudinaryService.uploadAudio(file);
-        ResponseAPI<String> response = new ResponseAPI<>();
-        response.setCode(200);
-        response.setMessage("Upload successful");
-        response.setData(publicId);
-        return ResponseEntity.ok(response);
-    }
-
-    // API upload file bất kỳ (Excel, Word, PDF, ...)
-    @PostMapping("/upload-any")
-    public ResponseEntity<ResponseAPI<String>> uploadAnyFile(@RequestParam("file") MultipartFile file)
-            throws IOException {
-        String publicId = cloudinaryService.uploadAnyFile(file);
         ResponseAPI<String> response = new ResponseAPI<>();
         response.setCode(200);
         response.setMessage("Upload successful");

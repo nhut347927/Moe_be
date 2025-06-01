@@ -19,6 +19,7 @@ import com.moe.socialnetwork.auth.dtos.LoginResponseDTO;
 import com.moe.socialnetwork.auth.dtos.LoginWithGoogleRequestDTO;
 import com.moe.socialnetwork.auth.dtos.RegisterRequestDTO;
 import com.moe.socialnetwork.auth.dtos.PasswordResetRequestRequestDTO;
+import com.moe.socialnetwork.auth.dtos.RefreshAccessTokenRequestDTO;
 import com.moe.socialnetwork.auth.dtos.PasswordResetRequestDTO;
 import com.moe.socialnetwork.auth.dtos.UserRegisterResponseDTO;
 import com.moe.socialnetwork.auth.services.IAuthService;
@@ -49,7 +50,8 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<ResponseAPI<UserRegisterResponseDTO>> register(@RequestBody @Valid RegisterRequestDTO request) {
+    public ResponseEntity<ResponseAPI<UserRegisterResponseDTO>> register(
+            @RequestBody @Valid RegisterRequestDTO request) {
         UserRegisterResponseDTO registeredUser = authService.register(request);
         return ResponseEntity.ok(ResponseAPI.of(HttpStatus.OK.value(), "Registration successful", registeredUser));
     }
@@ -61,14 +63,15 @@ public class AuthController {
     }
 
     @PostMapping("/google-login")
-    public ResponseEntity<ResponseAPI<LoginResponseDTO>> loginWithGoogle(@RequestBody @Valid LoginWithGoogleRequestDTO request) {
+    public ResponseEntity<ResponseAPI<LoginResponseDTO>> loginWithGoogle(
+            @RequestBody @Valid LoginWithGoogleRequestDTO request) {
         LoginResponseDTO login = authService.loginWithGoogle(request.getToken());
         return buildLoginResponse(login);
     }
 
     @PutMapping("/change-password")
     public ResponseEntity<ResponseAPI<String>> changePassword(@AuthenticationPrincipal User user,
-                                                            @RequestBody @Valid ChangePasswordRequestDTO request) {
+            @RequestBody @Valid ChangePasswordRequestDTO request) {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ResponseAPI.error(HttpStatus.UNAUTHORIZED.value(), "User is not authenticated", null));
@@ -82,12 +85,13 @@ public class AuthController {
     }
 
     @PostMapping("/password-reset-request")
-    public ResponseEntity<ResponseAPI<String>> passwordResetRequest(@RequestBody @Valid PasswordResetRequestRequestDTO request) {
+    public ResponseEntity<ResponseAPI<String>> passwordResetRequest(
+            @RequestBody @Valid PasswordResetRequestRequestDTO request) {
         User user = authService.findByEmail(request.getEmail());
         String resetToken = tokenService.generatePasswordResetToken(user);
         emailService.sendPasswordResetEmail(user.getEmail(), resetToken);
 
-        return ResponseEntity.ok(ResponseAPI.of(HttpStatus.OK.value(), 
+        return ResponseEntity.ok(ResponseAPI.of(HttpStatus.OK.value(),
                 "Password reset email sent successfully. Please check your email!", "Success"));
     }
 
@@ -107,19 +111,19 @@ public class AuthController {
     }
 
     @PostMapping("/refresh-token")
-    public ResponseEntity<ResponseAPI<String>> refreshAccessToken(HttpServletRequest request) {
-        String refreshToken = tokenService.extractRefreshTokenFromCookie(request);
+    public ResponseEntity<ResponseAPI<String>> refreshAccessToken(@RequestBody RefreshAccessTokenRequestDTO request) {
 
-        if (refreshToken == null || !tokenService.validateJwtToken(refreshToken)) {
+        if (request.getRefreshToken() == null || !tokenService.validateJwtToken(request.getRefreshToken())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ResponseAPI.error(HttpStatus.UNAUTHORIZED.value(), "Invalid or expired refresh token", null));
         }
 
-        String email = tokenService.getEmailFromJwtToken(refreshToken);
+        String email = tokenService.getEmailFromJwtToken(request.getRefreshToken());
         User user = authService.findByEmail(email);
         String newAccessToken = tokenService.generateJwtToken(user);
 
-        return ResponseEntity.ok(ResponseAPI.of(HttpStatus.OK.value(), "Access token refreshed successfully", newAccessToken));
+        return ResponseEntity
+                .ok(ResponseAPI.of(HttpStatus.OK.value(), "Access token refreshed successfully", newAccessToken));
     }
 
     @PostMapping("/logout")
