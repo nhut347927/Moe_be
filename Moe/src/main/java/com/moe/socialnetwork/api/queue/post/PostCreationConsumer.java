@@ -39,8 +39,8 @@ public class PostCreationConsumer {
     private void consume() throws RedisConnectionFailureException {
         while (true) {
             try {
-                // Chờ 5s lấy item, tránh treo vĩnh viễn gây timeout
-                String json = redisTemplate.opsForList().leftPop(QUEUE_NAME, 5, TimeUnit.SECONDS);
+                // Chờ 10s lấy item, tránh treo vĩnh viễn gây timeout
+                String json = redisTemplate.opsForList().leftPop(QUEUE_NAME, 10, TimeUnit.SECONDS);
                 System.out.println("[PostQueue] Consuming message: " + json);
                 if (json != null) {
 

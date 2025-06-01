@@ -34,3 +34,5 @@ build/
 
 # Ignore environment config
 .env
+# Ignore ffmpeg 
+src/main/resources/ffmpeg/

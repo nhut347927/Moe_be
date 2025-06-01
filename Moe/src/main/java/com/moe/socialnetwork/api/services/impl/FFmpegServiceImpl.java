@@ -24,7 +24,7 @@ public class FFmpegServiceImpl implements IFFmpegService {
 
     private final ICloudinaryService cloudinaryService;
     private final Cloudinary cloudinary;
-    private final String ffmpegPath = "ffmpeg";
+    private final String ffmpegPath = "src/main/resources/ffmpeg/bin/ffmpeg.exe";
 
     public FFmpegServiceImpl(ICloudinaryService cloudinaryService, Cloudinary cloudinary) {
         this.cloudinaryService = cloudinaryService;
