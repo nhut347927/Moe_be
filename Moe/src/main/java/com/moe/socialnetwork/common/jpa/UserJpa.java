@@ -17,4 +17,7 @@ public interface UserJpa extends JpaRepository<User, Long> {
 
 	@Query("SELECT u FROM User u WHERE u.passwordResetToken = :passwordResetToken")
 	Optional<User> findByPasswordResetToken(@Param("passwordResetToken") String passwordResetToken);
+
+	@Query("SELECT u FROM User u WHERE u.code = :code AND u.isDeleted = false")
+	Optional<User> findByCode(String code);
 }

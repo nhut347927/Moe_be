@@ -2,6 +2,7 @@ package com.moe.socialnetwork.common.models;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
@@ -32,6 +33,9 @@ public class Role {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+	@Column(unique = true, nullable = false, updatable = false)
+	private UUID code;
+
 	@Column(name = "role_name", nullable = false, unique = true, length = 50)
 	private String roleName;
 
@@ -48,6 +52,7 @@ public class Role {
 	@PrePersist
 	protected void onCreate() {
 		this.createdAt = LocalDateTime.now();
+		this.code = UUID.randomUUID();
 	}
 
 }
