@@ -1,6 +1,8 @@
 package com.moe.socialnetwork.common.jpa;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -40,4 +42,7 @@ public interface PostJpa extends JpaRepository<Post, Long> {
       )
       """)
   boolean existsPostInAnyUserPlaylist(@Param("userId") Long userId, @Param("postId") Long postId);
+
+  @Query("SELECT p FROM Post p WHERE p.isDeleted = false AND p.visibility = 'PUBLIC' AND p.code = :postCode")
+  Optional<Post> findPostByPostCode (@Param("postId") UUID postCode);
 }
