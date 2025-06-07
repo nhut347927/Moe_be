@@ -15,7 +15,6 @@ import com.moe.socialnetwork.common.models.Post;
 import com.moe.socialnetwork.common.models.PostPlaylist;
 import com.moe.socialnetwork.common.models.User;
 import com.moe.socialnetwork.exception.AppException;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -25,13 +24,19 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class PlaylistServiceImpl implements IPlaylistService {
 
     private final PlaylistJpa playlistJpa;
     private final PostJpa postJpa;
     private final PostPlaylistJpa postPlaylistJpa;
     private final AudioJpa audioJpa;
+
+    public PlaylistServiceImpl(PlaylistJpa playlistJpa, PostJpa postJpa, PostPlaylistJpa postPlaylistJpa, AudioJpa audioJpa) {
+        this.playlistJpa = playlistJpa;
+        this.postJpa = postJpa;
+        this.postPlaylistJpa = postPlaylistJpa;
+        this.audioJpa = audioJpa;
+    }
 
     public List<PlaylistDTO> getPlaylistsByUser(UUID userCode) {
         return playlistJpa.findPlaylistByUserCode(userCode)

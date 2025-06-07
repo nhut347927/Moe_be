@@ -44,5 +44,5 @@ public interface PostJpa extends JpaRepository<Post, Long> {
   boolean existsPostInAnyUserPlaylist(@Param("userId") Long userId, @Param("postId") Long postId);
 
   @Query("SELECT p FROM Post p WHERE p.isDeleted = false AND p.visibility = 'PUBLIC' AND p.code = :postCode")
-  Optional<Post> findPostByPostCode (@Param("postId") UUID postCode);
+  Optional<Post> findPostByPostCode (@Param("postCode") UUID postCode);
 }
